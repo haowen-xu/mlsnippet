@@ -1,0 +1,14 @@
+# IDE files
+.idea
+.cache
+*.iml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Python files
+*.pyc
+
+# Project files
+/debug.py
