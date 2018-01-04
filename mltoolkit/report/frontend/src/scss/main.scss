@@ -1,0 +1,90 @@
+// basic layouts
+#main {
+  padding-top: 2em;
+  padding-bottom: 2em;
+}
+
+@media (max-width: 399px) {
+  #main {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 400px) {
+  #main {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+
+#header {
+  text-align: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #ccc;
+
+  #title {
+    margin: 0;
+  }
+
+  #description {
+    color: #aaa;
+    font-size: 2rem;
+    margin: 1rem 0 0 0;
+  }
+
+  .ensure-padding {
+    // ensure 2rem padding between title/description and the horizon line
+    margin-bottom: 2rem;
+  }
+}
+
+#content {
+  // the margins of different levels of sections
+  .section {
+    margin: 2rem 0;
+    .section {
+      margin: 1.8rem 0;
+      .section {
+        margin: 1.5rem 0;
+      }
+    }
+  }
+
+  // block elements should have margins
+  blockquote, dl, figure, form, ol, p, pre, table, ul, .block {
+    margin: 1.2em 0;
+  }
+  .block {
+    display: block;
+    overflow-y: auto;
+  }
+
+  // block math should have larger margin
+  .block-math {
+    margin: 1.5em 0;
+  }
+
+  // min/max width of block elements
+  table {
+    min-width: 100%;
+    margin: 0;
+  }
+  img {
+    max-width: 100%;
+  }
+
+  // the style of attachment
+  .attachment {
+    padding: 1em;
+    border: 1px solid #ccc;
+    border-left: 3px solid #ccc;
+    span {
+      margin-right: .5em;
+    }
+    span:after {
+      content: ':';
+    }
+  }
+}

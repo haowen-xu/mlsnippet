@@ -11,4 +11,7 @@ Thumbs.db
 *.pyc
 
 # Project files
-/debug.py
+/debug.*
+
+# Log files
+*.log
