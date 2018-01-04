@@ -48,6 +48,8 @@ class ReportTestCase(unittest.TestCase):
             s = s.replace('{{ body|safe }}', body)
             s = s.replace('{{ styles|safe }}', styles)
             s = s.replace('{{ scripts|safe }}', scripts)
+            s = s.replace('{% raw %}', '')
+            s = s.replace('{% endraw %}', '')
             return s
 
         # test without description
