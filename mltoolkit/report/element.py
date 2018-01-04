@@ -3,21 +3,16 @@ import mimetypes
 import re
 from io import BytesIO
 
+from matplotlib import pyplot
 import pandas as pd
 import six
-
-from mltoolkit.utils import DocInherit
 
 try:
     from PIL import Image as PILImage
 except ImportError:  # pragma: no cover
     PILImage = None
 
-try:
-    from matplotlib import pyplot
-except ImportError:  # pragma: no cover
-    pyplot = None
-
+from mltoolkit.utils import DocInherit
 from .context import ToHtmlContext
 from .library import Library, MathJax
 from .utils import escape
@@ -518,11 +513,8 @@ class Image(Resource):
                 rendered figure.
 
         Raises:
-            RuntimeError: If matplotlib is not installed.
             TypeError: If `figure` is not a :class:`matplotlib.pyplot.Figure`.
         """
-        if pyplot is None:  # pragma: no cover
-            raise RuntimeError('`matplotlib` is not installed')
         if not isinstance(figure, pyplot.Figure):
             raise TypeError('`figure` must be an instance of '
                             '`matplotlib.pyplot.Figure`')
@@ -544,8 +536,7 @@ class Image(Resource):
 
 if PILImage is not None:
     register_as_element(PILImage.Image, Image.from_image)
-if pyplot is not None:
-    register_as_element(pyplot.Figure, Image.from_figure)
+register_as_element(pyplot.Figure, Image.from_figure)
 
 
 class DataFrameTable(Element):
@@ -577,3 +568,6 @@ class DataFrameTable(Element):
             self.data_frame.to_html()
         )
         return '<div class="block">' + table + '</div>'
+
+
+register_as_element(pd.DataFrame, DataFrameTable)

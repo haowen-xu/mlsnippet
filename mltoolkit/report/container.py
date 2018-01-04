@@ -17,8 +17,9 @@ class Container(Element):
         Construct the :class:`Container`.
 
         Args:
-            children: An :class:`Element`, or a list of objects which can
-                be converted into :class:`Element` via :func:`as_element`.
+            children: An :class:`Element`, a list of :class:`Element`,
+                or a list of objects which can be converted into
+                :class:`Element` via :func:`as_element`.
                 (default :obj:`None`, no children is specified)
         """
         if isinstance(children, Element):

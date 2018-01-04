@@ -55,9 +55,9 @@
   // block elements should have margins
   blockquote, dl, figure, form, ol, p, pre, table, ul, .block {
     margin: 1.2em 0;
-    display: block;
   }
   .block {
+    display: block;
     overflow-y: auto;
   }
 
