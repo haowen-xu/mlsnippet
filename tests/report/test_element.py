@@ -1,5 +1,6 @@
+import codecs
 import contextlib
-import mimetypes
+import os
 import re
 import unittest
 from io import BytesIO
@@ -16,6 +17,24 @@ from mltoolkit.report import *
 
 
 class ElementTestCase(unittest.TestCase):
+
+    def test_ipython_display(self):
+        e = Element()
+        e._to_html = Mock(return_value='xyz')
+        s = e._repr_html_()
+
+        css_path = os.path.join(
+            os.path.split(os.path.abspath(__file__))[0],
+            '../../mltoolkit/report/templates/ipython.css'
+        )
+        with codecs.open(css_path, 'rb', 'utf-8') as f:
+            css = f.read()
+
+        self.assertEqual(
+            s,
+            '<div class="mltoolkit-element"><style>{css}</style>'
+            'xyz</div>'.format(css=css)
+        )
 
     def test_to_html(self):
         def _to_html(ctx):

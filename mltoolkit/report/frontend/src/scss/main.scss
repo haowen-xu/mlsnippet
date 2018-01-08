@@ -1,3 +1,6 @@
+@import '~skeleton-css/css/normalize.css';
+@import '~skeleton-css/css/skeleton.css';
+
 // basic layouts
 #main {
   padding-top: 2em;
@@ -40,51 +43,7 @@
   }
 }
 
+@import 'elements';
 #content {
-  // the margins of different levels of sections
-  .section {
-    margin: 2rem 0;
-    .section {
-      margin: 1.8rem 0;
-      .section {
-        margin: 1.5rem 0;
-      }
-    }
-  }
-
-  // block elements should have margins
-  blockquote, dl, figure, form, ol, p, pre, table, ul, .block {
-    margin: 1.2em 0;
-  }
-  .block {
-    display: block;
-    overflow-y: auto;
-  }
-
-  // block math should have larger margin
-  .block-math {
-    margin: 1.5em 0;
-  }
-
-  // min/max width of block elements
-  table {
-    min-width: 100%;
-    margin: 0;
-  }
-  img {
-    max-width: 100%;
-  }
-
-  // the style of attachment
-  .attachment {
-    padding: 1em;
-    border: 1px solid #ccc;
-    border-left: 3px solid #ccc;
-    span {
-      margin-right: .5em;
-    }
-    span:after {
-      content: ':';
-    }
-  }
+  @include element_styles();
 }

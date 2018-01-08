@@ -1,5 +1,7 @@
 import base64
+import codecs
 import mimetypes
+import os
 import re
 from io import BytesIO
 
@@ -29,6 +31,26 @@ __all__ = [
 @DocInherit
 class Element(object):
     """Base class for report elements."""
+
+    def _repr_html_(self):
+        """
+        Render this :class:`Element` into HTML in a Jupyter notebook.
+
+        Returns:
+            str: The rendered HTML.
+        """
+        css_path = os.path.join(
+            os.path.split(os.path.abspath(__file__))[0],
+            'templates/ipython.css'
+        )
+        with codecs.open(css_path, 'rb', 'utf-8') as f:
+            css = f.read()
+        return (
+            '<div class="mltoolkit-element">'
+            '<style>' + css + '</style>' +
+            self.to_html(ToHtmlContext(is_ipython=True)) +
+            '</div>'
+        )
 
     def to_html(self, context=None):
         """

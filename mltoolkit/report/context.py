@@ -76,11 +76,23 @@ class ToHtmlContext(object):
     for producing the HTML document.
     """
 
-    def __init__(self):
-        """Construct the :class:`ToHtmlContext`."""
+    def __init__(self, is_ipython=False):
+        """
+        Construct the :class:`ToHtmlContext`.
+
+        Args:
+            is_ipython (bool): Whether or not the elements are displayed
+                in a Jupyter notebook? (default :obj:`False`)
+        """
+        self._is_ipython = is_ipython
         self._elements = []
         self._section_level = 0
         self._element_names = UniqueNames()
+
+    @property
+    def is_ipython(self):
+        """Whether or not the elements are displayed in a Jupyter notebook?"""
+        return self._is_ipython
 
     def iter_elements(self):
         """

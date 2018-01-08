@@ -41,10 +41,14 @@ class ToHtmlContextTestCase(unittest.TestCase):
         ctx = ToHtmlContext()
 
         # test empty context
+        self.assertFalse(ctx.is_ipython)
         self.assertEqual(ctx.section_level, 0)
         self.assertListEqual(list(ctx.iter_elements()), [])
         with pytest.raises(RuntimeError, match='No section has been opened'):
             _ = ctx.section_title_tag()
+
+        # test set is_ipython
+        self.assertTrue(ToHtmlContext(is_ipython=True).is_ipython)
 
         # test push elements
         element = Element()
