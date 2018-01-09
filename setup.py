@@ -46,6 +46,10 @@ setup(
     description='A set of toolkit for daily machine learning experiments.',
     long_description=__doc__,
     packages=find_packages('.', include=['mltoolkit', 'mltoolkit.*']),
+    package_data={
+        'mltoolkit.report': ['templates/*']
+    },
+    include_package_data=True,
     zip_safe=False,
     platforms='any',
     setup_requires=['setuptools'],
