@@ -39,10 +39,10 @@ install_requires = [s for s in requirements_list if not s.startswith('git+')]
 setup(
     name='MLToolkit',
     version=version,
-    url='https://github.com/korepwx/mltoolkit/',
+    url='https://github.com/haowen-xu/mltoolkit/',
     license='MIT',
     author='Haowen Xu',
-    author_email='public@korepwx.com',
+    author_email='haowen.xu@outlook.com',
     description='A set of toolkit for daily machine learning experiments.',
     long_description=__doc__,
     packages=find_packages('.', include=['mltoolkit', 'mltoolkit.*']),
