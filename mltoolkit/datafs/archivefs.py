@@ -40,6 +40,18 @@ class _ArchiveFS(DataFS):
     def sample_names(self, n_samples):
         raise UnsupportedOperation()
 
+    def list_meta(self, filename):
+        raise UnsupportedOperation()
+
+    def get_meta(self, filename, meta_keys):
+        raise UnsupportedOperation()
+
+    def put_meta(self, filename, meta_dict=None, **meta_dict_kwargs):
+        raise UnsupportedOperation()
+
+    def clear_meta(self, filename):
+        raise UnsupportedOperation()
+
 
 class TarArchiveFS(_ArchiveFS):
 
@@ -52,7 +64,7 @@ class TarArchiveFS(_ArchiveFS):
     def _init(self):
         self._file_obj = tarfile.open(self.archive_file, 'r')
 
-    def _destroy(self):
+    def _close(self):
         self._active_files.close_all()
         self._file_obj.close()
 
@@ -62,7 +74,9 @@ class TarArchiveFS(_ArchiveFS):
             if not mi.isdir():
                 yield self._canonical_path(mi.name)
 
-    def iter_files(self):
+    def iter_files(self, meta_keys=None):
+        if meta_keys:
+            raise UnsupportedOperation()
         self.init()
         for mi in self._file_obj:
             if not mi.isdir():
@@ -91,7 +105,7 @@ class ZipArchiveFS(_ArchiveFS):
     def _init(self):
         self._file_obj = zipfile.ZipFile(self.archive_file, 'r')
 
-    def _destroy(self):
+    def _close(self):
         self._active_files.close_all()
         self._file_obj.close()
 
@@ -104,7 +118,9 @@ class ZipArchiveFS(_ArchiveFS):
             if not self._isdir(mi):
                 yield self._canonical_path(mi.filename)
 
-    def iter_files(self):
+    def iter_files(self, meta_keys=None):
+        if meta_keys:
+            raise UnsupportedOperation()
         self.init()
         for mi in self._file_obj.infolist():
             if not self._isdir(mi):
@@ -130,7 +146,7 @@ class RarArchiveFS(_ArchiveFS):
     def _init(self):
         self._file_obj = rarfile.RarFile(self.archive_file, 'r')
 
-    def _destroy(self):
+    def _close(self):
         self._active_files.close_all()
         self._file_obj.close()
 
@@ -140,7 +156,9 @@ class RarArchiveFS(_ArchiveFS):
             if not mi.isdir():
                 yield self._canonical_path(mi.filename)
 
-    def iter_files(self):
+    def iter_files(self, meta_keys=None):
+        if meta_keys:
+            raise UnsupportedOperation()
         self.init()
         for mi in self._file_obj.infolist():
             if not mi.isdir():

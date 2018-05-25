@@ -4,36 +4,13 @@ from functools import reduce
 
 import six
 
-from mltoolkit.utils import DocInherit
+from mltoolkit.utils import DocInherit, AutoInitAndCloseable
 
 __all__ = [
-    'DataFileInfo',
     'UnsupportedOperation',
     'DataFSCapacity',
     'DataFS',
 ]
-
-
-class DataFileInfo(object):
-
-    __slots__ = ('_filename', '_size', '_meta')
-
-    def __init__(self, filename, size, meta=None):
-        self._filename = filename
-        self._size = size
-        self._meta = meta
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def meta(self):
-        return self._meta
 
 
 class UnsupportedOperation(Exception):
@@ -49,23 +26,39 @@ class DataFSCapacity(object):
 
     READ_DATA = 0x1
     WRITE_DATA = 0x2
-    QUICK_COUNT = 0x4
-    RANDOM_SAMPLE = 0x8
+    READ_META = 0x4
+    WRITE_META = 0x8
+    LIST_META = 0x10
+    QUICK_COUNT = 0x20
+    RANDOM_SAMPLE = 0x40
+    READ_WRITE_DATA = READ_DATA | WRITE_DATA
+    READ_WRITE_META = READ_META | WRITE_META
+    ALL = (READ_WRITE_DATA | READ_WRITE_META | LIST_META |
+           QUICK_COUNT | RANDOM_SAMPLE)
 
     def __init__(self, *flags):
         self._mode = reduce(operator.or_, flags, 0)
 
     def can_read_data(self):
-        return not not (self._mode & self.READ_DATA)
+        return (self._mode & self.READ_DATA) != 0
 
     def can_write_data(self):
-        return not not (self._mode & self.WRITE_DATA)
+        return (self._mode & self.WRITE_DATA) != 0
+
+    def can_read_meta(self):
+        return (self._mode & self.READ_META) != 0
+
+    def can_write_meta(self):
+        return (self._mode & self.WRITE_META) != 0
+
+    def can_list_meta(self):
+        return (self._mode & self.LIST_META) != 0
 
     def can_quick_count(self):
-        return not not (self._mode & self.QUICK_COUNT)
+        return (self._mode & self.QUICK_COUNT) != 0
 
     def can_random_sample(self):
-        return not not (self._mode & self.RANDOM_SAMPLE)
+        return (self._mode & self.RANDOM_SAMPLE) != 0
 
     def __repr__(self):
         pieces = []
@@ -78,7 +71,7 @@ class DataFSCapacity(object):
 
 
 @DocInherit
-class DataFS(object):
+class DataFS(AutoInitAndCloseable):
     """
     Base class for all dataset file systems.
     """
@@ -86,41 +79,20 @@ class DataFS(object):
     _buffer_size = 65536
     _initialized = False
 
-    def as_flow(self, batch_size, with_names=False, shuffle=False,
-                skip_incomplete=False):
+    def as_flow(self, batch_size, with_names=False, meta_keys=None,
+                shuffle=False, skip_incomplete=False):
         from .dataflow import DataFSFlow
         return DataFSFlow(
-            self.clone(), with_names=with_names, batch_size=batch_size,
-            shuffle=shuffle, skip_incomplete=skip_incomplete
+            self.clone(),
+            with_names=with_names,
+            meta_keys=meta_keys,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            skip_incomplete=skip_incomplete
         )
 
     def clone(self):
         raise NotImplementedError()
-
-    def _init(self):
-        raise NotImplementedError()
-
-    def init(self):
-        if not self._initialized:
-            self._init()
-            self._initialized = True
-
-    def _destroy(self):
-        raise NotImplementedError()
-
-    def destroy(self):
-        if self._initialized:
-            try:
-                self._destroy()
-            finally:
-                self._initialized = False
-
-    def __enter__(self):
-        self.init()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.destroy()
 
     @property
     def capacity(self):
@@ -141,19 +113,31 @@ class DataFS(object):
     def sample_names(self, n_samples):
         raise NotImplementedError()
 
-    def iter_files(self):
+    def iter_files(self, meta_keys=None):
+        if meta_keys is not None:
+            meta_keys = tuple(meta_keys)
         for name in self.iter_names():
-            yield name, self.retrieve(name)
+            yield (name,) + self.retrieve(name, meta_keys)
 
-    def sample_files(self, n_samples):
+    def sample_files(self, n_samples, meta_keys=None):
+        if meta_keys is not None:
+            meta_keys = tuple(meta_keys)
         names = self.sample_names(n_samples)
-        return [(name, self.retrieve(name)) for name in names]
+        return [(name,) + self.retrieve(name, meta_keys) for name in names]
 
-    def retrieve(self, filename):
+    def retrieve(self, filename, meta_keys=None):
+        if meta_keys is not None:
+            meta_keys = tuple(meta_keys)
+            return (self.get_data(filename),) + \
+                (meta_keys and self.get_meta(filename, meta_keys))
+        else:
+            return self.get_data(filename)
+
+    def get_data(self, filename):
         with self.open(filename, 'r') as f:
             return f.read()
 
-    def upload(self, filename, data):
+    def put_data(self, filename, data):
         if isinstance(data, six.binary_type):
             with self.open(filename, 'w') as f:
                 f.write(data)
@@ -176,4 +160,32 @@ class DataFS(object):
             raise TypeError('`data` must be bytes or a file-like object.')
 
     def open(self, filename, mode):
+        raise NotImplementedError()
+
+    def list_meta(self, filename):
+        raise NotImplementedError()
+
+    def get_meta(self, filename, meta_keys):
+        raise NotImplementedError()
+
+    def batch_get_meta(self, filenames, meta_keys):
+        if meta_keys is not None:
+            meta_keys = tuple(meta_keys)
+        return [self.get_meta(name, meta_keys) for name in filenames]
+
+    def get_meta_dict(self, filename):
+        if meta_keys is not None:
+            meta_keys = tuple(meta_keys)
+        meta_keys = self.list_meta(filename)
+        meta_values = self.get_meta(filename, meta_keys)
+        return {k: v for k, v in zip(meta_keys, meta_values)}
+
+    def put_meta(self, filename, meta_dict=None, **meta_dict_kwargs):
+        raise NotImplementedError()
+
+    def clear_and_put_meta(self, filename, meta_dict=None, **meta_dict_kwargs):
+        self.clear_meta(filename)
+        self.put_meta(filename, meta_dict, **meta_dict_kwargs)
+
+    def clear_meta(self, filename):
         raise NotImplementedError()

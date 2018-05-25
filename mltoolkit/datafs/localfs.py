@@ -53,7 +53,7 @@ class LocalFS(DataFS):
     def _init(self):
         pass
 
-    def _destroy(self):
+    def _close(self):
         self._active_files.close_all()
 
     def iter_names(self):
@@ -72,3 +72,15 @@ class LocalFS(DataFS):
             return self._active_files.add(open(file_path, 'wb'))
         else:
             raise ValueError('Unsupported open mode {!r}'.format(mode))
+
+    def list_meta(self, filename):
+        raise UnsupportedOperation()
+
+    def get_meta(self, filename, meta_keys):
+        raise UnsupportedOperation()
+
+    def put_meta(self, filename, meta_dict=None, **meta_dict_kwargs):
+        raise UnsupportedOperation()
+
+    def clear_meta(self, filename):
+        raise UnsupportedOperation()
