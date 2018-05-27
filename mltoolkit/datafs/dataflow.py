@@ -1,24 +1,55 @@
 import functools
 
 import numpy as np
+import six
 
 from tfsnippet.dataflow import DataFlow
 from tfsnippet.utils import AutoInitAndCloseable, minibatch_slices_iterator
 
 from .base import DataFS
 
-__all__ = ['DataFSFlow']
+__all__ = ['DataFSFlow', 'DataFSRandomFlow']
 
 
 class _BaseDataFSFlow(DataFlow, AutoInitAndCloseable):
 
-    def __init__(self, fs):
+    def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
+                 skip_incomplete=False):
         super(_BaseDataFSFlow, self).__init__()
         self._fs = fs  # type: DataFS
+        self._batch_size = batch_size
+        self._with_names = with_names
+        self._meta_keys = tuple(meta_keys) if meta_keys is not None else None
+        self._skip_incomplete = skip_incomplete
+
+    @property
+    def batch_size(self):
+        """
+        Get the size of each mini-batch.
+
+        Returns:
+            int: The size of each mini-batch.
+        """
+        return self._batch_size
+
+    @property
+    def skip_incomplete(self):
+        """
+        Whether or not to exclude the last mini-batch if it is incomplete?
+        """
+        return self._skip_incomplete
 
     @property
     def fs(self):
         return self._fs
+
+    @property
+    def with_names(self):
+        return self._with_names
+
+    @property
+    def meta_keys(self):
+        return self._meta_keys
 
     def _init(self):
         self.fs.init()
@@ -30,6 +61,7 @@ class _BaseDataFSFlow(DataFlow, AutoInitAndCloseable):
 class _BatchArrayGenerator(object):
 
     def __init__(self, batch_size, with_names, meta_keys):
+        meta_keys = meta_keys or ()
         self.batch_size = batch_size
         self.with_names = with_names
         self.meta_keys = meta_keys
@@ -54,7 +86,13 @@ class _BatchArrayGenerator(object):
         self.add = add
 
     def to_arrays(self):
-        return tuple(np.asarray(buf) for buf in self.buffers)
+        if self.with_names:
+            return ((np.asarray(self.buffers[0], dtype=str),
+                     np.asarray(self.buffers[1], dtype=six.binary_type),) +
+                    tuple(np.asarray(buf) for buf in self.buffers[2:]))
+        else:
+            return ((np.asarray(self.buffers[0], dtype=six.binary_type),) +
+                    tuple(np.asarray(buf) for buf in self.buffers[1:]))
 
     def clear_all(self):
         for buf in self.buffers:
@@ -73,31 +111,13 @@ class DataFSFlow(_BaseDataFSFlow):
 
     def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
                  shuffle=False, skip_incomplete=False):
-        super(DataFSFlow, self).__init__(fs)
-        self._batch_size = batch_size
-        self._with_names = with_names
-        self._meta_keys = tuple(meta_keys or ())
+        super(DataFSFlow, self).__init__(
+            fs, batch_size=batch_size, with_names=with_names,
+            meta_keys=meta_keys, skip_incomplete=skip_incomplete
+        )
         self._is_shuffled = shuffle
-        self._skip_incomplete = skip_incomplete
         self._cached_filenames = None
         self._cached_indices = None
-
-    @property
-    def batch_size(self):
-        """
-        Get the size of each mini-batch.
-
-        Returns:
-            int: The size of each mini-batch.
-        """
-        return self._batch_size
-
-    @property
-    def skip_incomplete(self):
-        """
-        Whether or not to exclude the last mini-batch if it is incomplete?
-        """
-        return self._skip_incomplete
 
     @property
     def is_shuffled(self):
@@ -106,14 +126,6 @@ class DataFSFlow(_BaseDataFSFlow):
         mini-batches?
         """
         return self._is_shuffled
-
-    @property
-    def with_names(self):
-        return self._with_names
-
-    @property
-    def meta_keys(self):
-        return self._meta_keys
 
     def __natural_iterator(self):
         g = _BatchArrayGenerator(
@@ -173,3 +185,63 @@ class DataFSFlow(_BaseDataFSFlow):
             return self.__shuffle_iterator()
         else:
             return self.__natural_iterator()
+
+
+class DataFSRandomFlow(_BaseDataFSFlow):
+
+    def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
+                 epoch_size=None, skip_incomplete=False):
+        super(DataFSRandomFlow, self).__init__(
+            fs, batch_size=batch_size, with_names=with_names,
+            meta_keys=meta_keys, skip_incomplete=skip_incomplete
+        )
+        if epoch_size is not None:
+            if epoch_size % self.batch_size != 0:
+                raise ValueError('`epoch_size` must be multiples of '
+                                 '`batch_size`.')
+            if epoch_size <= 0:
+                raise ValueError('`epoch_size` must be positive.')
+        self._epoch_size = epoch_size
+
+        # the loop generator
+        if epoch_size is None:
+            def loop_generator():
+                while True:
+                    yield
+        else:
+            if six.PY2:
+                def loop_generator():
+                    return xrange(epoch_size / self.batch_size)
+            else:
+                def loop_generator():
+                    return range(epoch_size / self.batch_size)
+        self._loop_generator = loop_generator
+
+        # the batch array generator
+        if self.with_names:
+            def make_batch_arrays(batch):
+                return ((np.asarray(batch[0], dtype=str),
+                         np.asarray(batch[1], dtype=six.binary_type),) +
+                        tuple(np.asarray(buf) for buf in batch[2:]))
+        else:
+            def make_batch_arrays(batch):
+                return ((np.asarray(batch[1], dtype=six.binary_type),) +
+                        tuple(np.asarray(buf) for buf in batch[2:]))
+        self._make_batch_arrays = make_batch_arrays
+
+    @property
+    def epoch_size(self):
+        return self._epoch_size
+
+    def _minibatch_iterator(self):
+        g = _BatchArrayGenerator(batch_size=self.batch_size,
+                                 with_names=self.with_names,
+                                 meta_keys=self.meta_keys)
+        for _ in self._loop_generator():
+            batch = self.fs.sample_files(self.batch_size, self.meta_keys)
+            if batch:
+                for b in batch:
+                    g.add(b[0], b[1], b[2:])
+                if g.full_batch or not self.skip_incomplete:
+                    yield g.to_arrays()
+                    g.clear_all()

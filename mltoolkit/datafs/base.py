@@ -8,6 +8,8 @@ from mltoolkit.utils import DocInherit, AutoInitAndCloseable
 
 __all__ = [
     'UnsupportedOperation',
+    'DataFileNotExist',
+    'MetaKeyNotExist',
     'DataFSCapacity',
     'DataFS',
 ]
@@ -18,6 +20,39 @@ class UnsupportedOperation(Exception):
     Class to indicate that a requested operation is not supported by the
     specific :class:`DataFS` subclass.
     """
+
+
+class DataFileNotExist(KeyError, IOError):
+    """Class to indicate a requested data file does not exist."""
+
+    def __init__(self, filename):
+        super(DataFileNotExist, self).__init__(filename)
+
+    @property
+    def filename(self):
+        return self.args[0]
+
+    def __str__(self):
+        return 'Data file not exist: {!r}'.format(self.filename)
+
+
+class MetaKeyNotExist(KeyError):
+    """Class to indicate a requested meta key does not exist."""
+
+    def __init__(self, filename, meta_key):
+        super(MetaKeyNotExist, self).__init__(filename, meta_key)
+
+    @property
+    def filename(self):
+        return self.args[0]
+
+    @property
+    def meta_key(self):
+        return self.args[1]
+
+    def __str__(self):
+        return 'In file {!r}: meta key not exist: {!r}'. \
+            format(self.filename, self.meta_key)
 
 
 class DataFSCapacity(object):
@@ -91,6 +126,17 @@ class DataFS(AutoInitAndCloseable):
             skip_incomplete=skip_incomplete
         )
 
+    def as_random_flow(self, batch_size, with_names=False, meta_keys=None,
+                       skip_incomplete=False):
+        from .dataflow import DataFSRandomFlow
+        return DataFSRandomFlow(
+            self.clone(),
+            with_names=with_names,
+            meta_keys=meta_keys,
+            batch_size=batch_size,
+            skip_incomplete=skip_incomplete
+        )
+
     def clone(self):
         raise NotImplementedError()
 
@@ -134,21 +180,12 @@ class DataFS(AutoInitAndCloseable):
             return self.get_data(filename)
 
     def get_data(self, filename):
-        with self.open(filename, 'r') as f:
-            return f.read()
+        return self.retrieve(filename)
 
     def put_data(self, filename, data):
         if isinstance(data, six.binary_type):
             with self.open(filename, 'w') as f:
                 f.write(data)
-        elif hasattr(data, 'readinto'):
-            buf = bytearray(self._buffer_size)
-            with self.open(filename, 'w') as f:
-                while True:
-                    k = data.readinto(buf)
-                    if k <= 0:
-                        break
-                    f.write(buf[:k])
         elif hasattr(data, 'read'):
             with self.open(filename, 'w') as f:
                 while True:
@@ -162,6 +199,12 @@ class DataFS(AutoInitAndCloseable):
     def open(self, filename, mode):
         raise NotImplementedError()
 
+    def isfile(self, filename):
+        raise NotImplementedError()
+
+    def batch_isfile(self, filenames):
+        return [self.isfile(filename) for filename in filenames]
+
     def list_meta(self, filename):
         raise NotImplementedError()
 
@@ -174,8 +217,6 @@ class DataFS(AutoInitAndCloseable):
         return [self.get_meta(name, meta_keys) for name in filenames]
 
     def get_meta_dict(self, filename):
-        if meta_keys is not None:
-            meta_keys = tuple(meta_keys)
         meta_keys = self.list_meta(filename)
         meta_values = self.get_meta(filename, meta_keys)
         return {k: v for k, v in zip(meta_keys, meta_values)}

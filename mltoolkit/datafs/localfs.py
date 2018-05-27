@@ -1,5 +1,6 @@
 import os
 
+from mltoolkit.utils import makedirs
 from .utils import ActiveFiles
 from .base import *
 
@@ -69,9 +70,14 @@ class LocalFS(DataFS):
         if mode == 'r':
             return self._active_files.add(open(file_path, 'rb'))
         elif mode == 'w':
+            parent_dir = os.path.split(file_path)[0]
+            makedirs(parent_dir, exist_ok=True)
             return self._active_files.add(open(file_path, 'wb'))
         else:
-            raise ValueError('Unsupported open mode {!r}'.format(mode))
+            raise ValueError('Invalid open mode {!r}'.format(mode))
+
+    def isfile(self, filename):
+        return os.path.isfile(os.path.join(self.root_dir, filename))
 
     def list_meta(self, filename):
         raise UnsupportedOperation()

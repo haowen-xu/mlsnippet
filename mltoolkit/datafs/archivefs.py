@@ -89,7 +89,14 @@ class TarArchiveFS(_ArchiveFS):
             mi = self._file_obj.getmember(filename)
             return self._active_files.add(self._file_obj.extractfile(mi))
         else:
-            raise ValueError('Unsupported open mode {!r}'.format(mode))
+            raise ValueError('Invalid open mode {!r}'.format(mode))
+
+    def isfile(self, filename):
+        try:
+            mi = self._file_obj.getmember(filename)
+            return not mi.isdir()
+        except KeyError:
+            return False
 
 
 class ZipArchiveFS(_ArchiveFS):
@@ -130,8 +137,15 @@ class ZipArchiveFS(_ArchiveFS):
     def open(self, filename, mode):
         self.init()
         if mode != 'r':
-            raise ValueError('Unsupported open mode {!r}'.format(mode))
+            raise ValueError('Invalid open mode {!r}'.format(mode))
         return self._active_files.add(self._file_obj.open(filename, mode=mode))
+
+    def isfile(self, filename):
+        try:
+            mi = self._file_obj.getinfo(filename)
+            return not self._isdir(mi)
+        except KeyError:
+            return False
 
 
 class RarArchiveFS(_ArchiveFS):
@@ -171,4 +185,11 @@ class RarArchiveFS(_ArchiveFS):
             mi = self._file_obj.getinfo(filename)
             return self._active_files.add(self._file_obj.open(mi))
         else:
-            raise ValueError('Unsupported open mode {!r}'.format(mode))
+            raise ValueError('Invalid open mode {!r}'.format(mode))
+
+    def isfile(self, filename):
+        try:
+            mi = self._file_obj.getinfo(filename)
+            return not mi.isdir()
+        except KeyError:
+            return False
