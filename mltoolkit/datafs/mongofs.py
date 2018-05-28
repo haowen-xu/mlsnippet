@@ -1,5 +1,3 @@
-import functools
-
 from gridfs import GridFS, GridFSBucket
 from pymongo import MongoClient, CursorType
 from pymongo.database import Database
@@ -10,10 +8,10 @@ from .utils import ActiveFiles
 
 __all__ = ['MongoFS']
 
+META_FIELD = 'metadata'
+
 
 class MongoFS(DataFS):
-
-    META_FIELD = 'metadata'
 
     def __init__(self, conn_str, db_name, coll_name, strict=False):
         super(DataFS, self).__init__()
@@ -44,7 +42,7 @@ class MongoFS(DataFS):
     def _make_query_project(self, meta_keys=None, _id=1, filename=1):
         ret = {'_id': _id, 'filename': filename}
         if meta_keys:
-            ret.update({'{}.{}'.format(self.META_FIELD, k): 1
+            ret.update({'{}.{}'.format(META_FIELD, k): 1
                         for k in meta_keys})
         return ret
 
@@ -56,7 +54,7 @@ class MongoFS(DataFS):
         ])
 
     def _make_result_meta(self, record, meta_keys):
-        meta_dict = record.get(self.META_FIELD)
+        meta_dict = record.get(META_FIELD)
         if not meta_dict or not isinstance(meta_dict, dict):
             meta_dict = {}
         return tuple(self._get_meta_value_from_record(record, meta_dict, k)
@@ -229,10 +227,10 @@ class MongoFS(DataFS):
 
     def get_meta_dict(self, filename):
         f = self.collection.files.find_one(
-            {'filename': filename}, {self.META_FIELD: 1})
+            {'filename': filename}, {META_FIELD: 1})
         if f is None:
             raise DataFileNotExist(filename)
-        meta_dict = f.get(self.META_FIELD, None)
+        meta_dict = f.get(META_FIELD, None)
         if not meta_dict or not isinstance(meta_dict, dict):
             return {}
         else:
