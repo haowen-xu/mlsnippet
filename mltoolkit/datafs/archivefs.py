@@ -89,7 +89,7 @@ class TarArchiveFS(_ArchiveFS):
             mi = self._file_obj.getmember(filename)
             return self._active_files.add(self._file_obj.extractfile(mi))
         else:
-            raise ValueError('Invalid open mode {!r}'.format(mode))
+            raise UnsupportedOperation('Invalid open mode {!r}'.format(mode))
 
     def isfile(self, filename):
         try:
