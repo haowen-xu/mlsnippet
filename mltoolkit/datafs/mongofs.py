@@ -14,11 +14,11 @@ META_FIELD = 'metadata'
 class MongoFS(DataFS):
 
     def __init__(self, conn_str, db_name, coll_name, strict=False):
-        super(DataFS, self).__init__()
+        super(DataFS, self).__init__(strict=strict)
+
         self._conn_str = conn_str
         self._db_name = db_name
         self._coll_name = coll_name
-        self._strict = strict
         self._fs_coll_name = '{}.files'.format(coll_name)
 
         self._client = None  # type: MongoClient
@@ -27,7 +27,7 @@ class MongoFS(DataFS):
         self._gridfs_bucket = None  # type: GridFSBucket
         self._collection = None  # type: Collection
 
-        if self._strict:
+        if self.strict:
             def get_meta_value(r, m, k):
                 if k not in m:
                     raise MetaKeyNotExist(r['filename'], k)

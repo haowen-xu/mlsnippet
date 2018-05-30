@@ -14,6 +14,6 @@ from .utils import *
 try:
     from . import dataflow
     from .dataflow import *
-    __all__ += archivefs.__all__
+    __all__ += dataflow.__all__
 except ImportError:
     pass

@@ -29,7 +29,9 @@ def iter_files(root_dir, sep='/'):
 
 class LocalFS(DataFS):
 
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, strict=False):
+        super(LocalFS, self).__init__(strict=strict)
+
         root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(root_dir):
             raise IOError('Not a directory: {!r}'.format(root_dir))

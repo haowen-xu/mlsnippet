@@ -16,7 +16,9 @@ __all__ = ['TarArchiveFS', 'ZipArchiveFS', 'RarArchiveFS']
 
 class _ArchiveFS(DataFS):
 
-    def __init__(self, archive_file, capacity):
+    def __init__(self, archive_file, capacity, strict):
+        super(_ArchiveFS, self).__init__(strict=strict)
+
         archive_file = os.path.abspath(archive_file)
         if not os.path.isfile(archive_file):
             raise IOError('Not a file: {!r}'.format(archive_file))
@@ -55,9 +57,12 @@ class _ArchiveFS(DataFS):
 
 class TarArchiveFS(_ArchiveFS):
 
-    def __init__(self, archive_file):
+    def __init__(self, archive_file, strict=False):
         super(TarArchiveFS, self).__init__(
-            archive_file, DataFSCapacity(DataFSCapacity.READ_DATA))
+            archive_file,
+            DataFSCapacity(DataFSCapacity.READ_DATA),
+            strict=strict
+        )
         self._file_obj = None  # type: tarfile.TarFile
         self._active_files = ActiveFiles()
 
@@ -101,10 +106,11 @@ class TarArchiveFS(_ArchiveFS):
 
 class ZipArchiveFS(_ArchiveFS):
 
-    def __init__(self, archive_file):
+    def __init__(self, archive_file, strict=False):
         super(ZipArchiveFS, self).__init__(
             archive_file,
-            DataFSCapacity(DataFSCapacity.READ_DATA)
+            DataFSCapacity(DataFSCapacity.READ_DATA),
+            strict=strict
         )
         self._file_obj = None  # type: zipfile.ZipFile
         self._active_files = ActiveFiles()
@@ -150,11 +156,14 @@ class ZipArchiveFS(_ArchiveFS):
 
 class RarArchiveFS(_ArchiveFS):
 
-    def __init__(self, archive_file):
+    def __init__(self, archive_file, strict=False):
         if rarfile is None:
             raise RuntimeError('Python package `rarfile` is missing.')
         super(RarArchiveFS, self).__init__(
-            archive_file, DataFSCapacity(DataFSCapacity.READ_DATA))
+            archive_file,
+            DataFSCapacity(DataFSCapacity.READ_DATA),
+            strict=strict
+        )
         self._file_obj = None  # type: rarfile.RarFile
 
     def _init(self):

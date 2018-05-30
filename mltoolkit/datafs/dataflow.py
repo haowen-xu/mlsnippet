@@ -1,4 +1,5 @@
 import functools
+import re
 
 import numpy as np
 import six
@@ -110,7 +111,7 @@ class _BatchArrayGenerator(object):
 class DataFSFlow(_BaseDataFSFlow):
 
     def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
-                 shuffle=False, skip_incomplete=False):
+                 shuffle=False, skip_incomplete=False, names_pattern=None):
         super(DataFSFlow, self).__init__(
             fs, batch_size=batch_size, with_names=with_names,
             meta_keys=meta_keys, skip_incomplete=skip_incomplete
@@ -118,6 +119,17 @@ class DataFSFlow(_BaseDataFSFlow):
         self._is_shuffled = shuffle
         self._cached_filenames = None
         self._cached_indices = None
+        self._names_pattern = re.compile(names_pattern) \
+            if names_pattern is not None else None
+
+        # derive the function to test file name
+        if self._names_pattern is not None:
+            def _is_name_matched(n):
+                return self._names_pattern.match(n) is not None
+        else:
+            def _is_name_matched(n):
+                return True
+        self._is_name_matched = _is_name_matched
 
     @property
     def is_shuffled(self):
@@ -127,21 +139,39 @@ class DataFSFlow(_BaseDataFSFlow):
         """
         return self._is_shuffled
 
+    @property
+    def names_pattern(self):
+        """
+        Get the regex pattern for filtering the file names.
+
+        Returns:
+            None or regex: The regex pattern for file names, or :obj:`None`
+                if the pattern is not set.
+        """
+        return self._names_pattern
+
     def __natural_iterator(self):
         g = _BatchArrayGenerator(
             self.batch_size, self.with_names, self.meta_keys)
         for f in self.fs.iter_files(meta_keys=self.meta_keys):
-            g.add(f[0], f[1], f[2:])
-            if g.full_batch:
-                yield g.to_arrays()
-                g.clear_all()
+            if self._is_name_matched(f[0]):
+                g.add(f[0], f[1], f[2:])
+                if g.full_batch:
+                    yield g.to_arrays()
+                    g.clear_all()
         if g.not_empty and (g.full_batch or not self.skip_incomplete):
             yield g.to_arrays()
 
     def __shuffle_iterator(self):
         # cache filenames
         if self._cached_filenames is None:
-            self._cached_filenames = np.asarray(self.fs.list_names())
+            if self._names_pattern is None:
+                self._cached_filenames = np.asarray(self.fs.list_names())
+            else:
+                self._cached_filenames = np.asarray([
+                    n for n in self.fs.iter_names()
+                    if self._is_name_matched(n)
+                ])
         names = self._cached_filenames
 
         # reuse indices

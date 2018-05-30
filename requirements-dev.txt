@@ -6,3 +6,4 @@ Pillow >= 5.0.0
 pytest >= 3.0
 selenium >= 3.8.0
 ipython >= 5.5.0
+git+https://github.com/haowen-xu/tfsnippet.git

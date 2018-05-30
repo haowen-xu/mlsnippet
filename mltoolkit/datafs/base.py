@@ -158,8 +158,28 @@ class DataFS(AutoInitAndCloseable):
     _initialized = False
     """Whether or not this :class:`DataFS` has been initialized?"""
 
+    def __init__(self, strict=False):
+        """
+        Construct a new :class:`DataFS`.
+
+        Args:
+            strict (bool): Whether or not this :class:`DataFS` works in
+                strict mode?  (default :obj:`False`)
+
+                In strict mode, the following behaviours will take place:
+
+                1. Accessing the value of a non-exist meta key will cause
+                   a :class:`MetaKeyNotExist`, instead of getting :obj:`None`.
+        """
+        self._strict = strict
+
+    @property
+    def strict(self):
+        """Whether or not this :class:`DataFS` works in strict mode?"""
+        return self._strict
+
     def as_flow(self, batch_size, with_names=True, meta_keys=None,
-                shuffle=False, skip_incomplete=False):
+                shuffle=False, skip_incomplete=False, names_pattern=None):
         """
         Construct a :class:`~mltoolkit.datafs.DataFSFlow`,
         a :class:`~tfsnippet.dataflow.DataFlow` driven by :meth:`iter_files`,
@@ -182,6 +202,10 @@ class DataFS(AutoInitAndCloseable):
                 mini-batch, if it has fewer data than ``batch_size``?
                 (default :obj:`False`, the final mini-batch will always
                  be visited even if it has fewer data than ``batch_size``)
+            names_pattern (None or str or regex): The file name pattern.
+                If specified, only if the file name matches this pattern,
+                would the file be included in the constructed data flow.
+                (default :obj:`None`)
 
         Returns:
             mltoolkit.datafs.DataFSFlow: A dataflow, with each mini-batch
@@ -195,7 +219,8 @@ class DataFS(AutoInitAndCloseable):
             meta_keys=meta_keys,
             batch_size=batch_size,
             shuffle=shuffle,
-            skip_incomplete=skip_incomplete
+            skip_incomplete=skip_incomplete,
+            names_pattern=names_pattern
         )
 
     def as_random_flow(self, batch_size, with_names=True, meta_keys=None,
