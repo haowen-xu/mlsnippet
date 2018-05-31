@@ -1,35 +1,26 @@
 import os
 
 from mltoolkit.utils import makedirs
-from .utils import ActiveFiles
+from .utils import ActiveFiles, iter_files
 from .base import *
 
 __all__ = ['LocalFS']
 
 
-def iter_files(root_dir, sep='/'):
-    def f(parent_path, parent_name):
-        for f_name in os.listdir(parent_path):
-            f_child_path = parent_path + os.sep + f_name
-            f_child_name = parent_name + sep + f_name
-            if os.path.isdir(f_child_path):
-                for s in f(f_child_path, f_child_name):
-                    yield s
-            else:
-                yield f_child_name
-
-    for name in os.listdir(root_dir):
-        child_path = root_dir + os.sep + name
-        if os.path.isdir(child_path):
-            for x in f(child_path, name):
-                yield x
-        else:
-            yield name
-
-
 class LocalFS(DataFS):
+    """
+    A :class:`DataFS` backed by local file system.
+    """
 
     def __init__(self, root_dir, strict=False):
+        """
+        Construct a new :class:`LocalFS`.
+
+        Args:
+            root_dir (str): The root directory for this :class:`LocalFS`.
+            strict (bool): Whether or not this :class:`DataFS` works in
+                strict mode?  (default :obj:`False`)
+        """
         super(LocalFS, self).__init__(strict=strict)
 
         root_dir = os.path.abspath(root_dir)

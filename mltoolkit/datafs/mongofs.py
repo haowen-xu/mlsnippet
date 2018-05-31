@@ -14,7 +14,7 @@ META_FIELD = 'metadata'
 class MongoFS(DataFS):
 
     def __init__(self, conn_str, db_name, coll_name, strict=False):
-        super(DataFS, self).__init__(strict=strict)
+        super(MongoFS, self).__init__(strict=strict)
 
         self._conn_str = conn_str
         self._db_name = db_name

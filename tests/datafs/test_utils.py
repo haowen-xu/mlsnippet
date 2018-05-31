@@ -1,11 +1,14 @@
 import functools
 import gc
+import os
 import unittest
+from tempfile import TemporaryDirectory
 
 import pytest
 from mock import Mock
 
-from mltoolkit.datafs import ActiveFiles
+from mltoolkit.datafs import ActiveFiles, iter_files
+from mltoolkit.utils import makedirs
 
 
 class ActiveFilesTestCase(unittest.TestCase):
@@ -68,6 +71,24 @@ class ActiveFilesTestCase(unittest.TestCase):
         with pytest.raises(SystemExit):
             active_files.close_all()
         self.assertTrue(f.close.called)
+
+
+class IterFilesTestCase(unittest.TestCase):
+
+    def test_iter_files(self):
+        names = ['a/1.txt', 'a/2.txt', 'a/b/1.txt', 'a/b/2.txt',
+                 'b/1.txt', 'b/2.txt', 'c.txt']
+
+        with TemporaryDirectory() as tempdir:
+            for name in names:
+                f_path = os.path.join(tempdir, name)
+                f_dir = os.path.split(f_path)[0]
+                makedirs(f_dir, exist_ok=True)
+                with open(f_path, 'wb') as f:
+                    f.write(b'')
+
+            self.assertListEqual(names, sorted(iter_files(tempdir)))
+            self.assertListEqual(names, sorted(iter_files(tempdir + '/a/../')))
 
 
 if __name__ == '__main__':

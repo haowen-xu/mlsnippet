@@ -1,9 +1,10 @@
+import os
 import sys
 import weakref
 
 import six
 
-__all__ = ['ActiveFiles']
+__all__ = ['ActiveFiles', 'iter_files']
 
 
 class ActiveFiles(object):
@@ -62,3 +63,34 @@ class ActiveFiles(object):
         self._files.clear()
         if reraise_buf:
             six.reraise(*reraise_buf[-1])
+
+
+def iter_files(root_dir, sep='/'):
+    """
+    Iterate through all files in `root_dir`, returning the relative paths
+    of each file.  The sub-directories will not be yielded.
+
+    Args:
+        root_dir (str): The root directory, from which to iterate.
+        sep (str): The separator for the relative paths.
+
+    Yields:
+        str: The relative paths of each file.
+    """
+    def f(parent_path, parent_name):
+        for f_name in os.listdir(parent_path):
+            f_child_path = parent_path + os.sep + f_name
+            f_child_name = parent_name + sep + f_name
+            if os.path.isdir(f_child_path):
+                for s in f(f_child_path, f_child_name):
+                    yield s
+            else:
+                yield f_child_name
+
+    for name in os.listdir(root_dir):
+        child_path = root_dir + os.sep + name
+        if os.path.isdir(child_path):
+            for x in f(child_path, name):
+                yield x
+        else:
+            yield name

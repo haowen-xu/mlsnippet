@@ -136,6 +136,12 @@ class DataFSCapacity(object):
                 pieces.append(flag)
         return '{}({})'.format(self.__class__.__name__, ','.join(pieces))
 
+    def __eq__(self, other):
+        return isinstance(other, DataFSCapacity) and self._mode == other._mode
+
+    def __hash__(self):
+        return hash(self._mode)
+
 
 @DocInherit
 class DataFS(AutoInitAndCloseable):
@@ -421,7 +427,8 @@ class DataFS(AutoInitAndCloseable):
         Returns:
             bytes: The content of a file.
         """
-        return self.retrieve(filename)
+        with self.open(filename, 'r') as f:
+            return f.read()
 
     def put_data(self, filename, data):
         """

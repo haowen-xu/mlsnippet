@@ -14,7 +14,12 @@ from .standard_checks import StandardFSChecks, LocalFS
 class LocalFSTestCase(unittest.TestCase, StandardFSChecks):
 
     def get_snapshot(self, fs):
-        raise NotImplementedError()
+        ret = {}
+        for name in iter_files(fs.root_dir):
+            with open(os.path.join(fs.root_dir, name), 'rb') as f:
+                cnt = f.read()
+            ret[name] = (cnt,)
+        return ret
 
     @contextmanager
     def temporary_fs(self, snapshot=None):

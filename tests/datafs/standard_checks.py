@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from io import BytesIO
 
 import pytest
 import six
@@ -35,7 +36,7 @@ class StandardFSChecks(object):
         Get the snapshot of the specified `fs`.
 
         Args:
-            fs: The fs, where to collect the snapshot.
+            fs: The fs, from where to collect the snapshot.
 
         Returns:
             The snapshot.
@@ -75,17 +76,21 @@ class StandardFSChecks(object):
         """
         capacity = DataFSCapacity(*capacity)
         self.check_read(capacity)
+        if capacity.can_write_data():
+            self.check_write(capacity)
 
     def check_read(self, capacity):
         names = ['a/1.txt', 'a/2.htm', 'b/1.md', 'b/2.rst', 'c']
 
-        # first part: no meta data
         if six.PY2:
             to_bytes = lambda s: s
         else:
             to_bytes = lambda s: s.encode('utf-8')
-        snapshot = {n: (to_bytes(n) + b' content',) for n in names}
+        get_content = lambda n: to_bytes(n) + b' content'
+        snapshot = {n: (get_content(n),) for n in names}
         with self.temporary_fs(snapshot) as fs:
+            self.assertDictEqual(snapshot, self.get_snapshot(fs))
+
             # count, iter, list and sample names
             self.assertEquals(5, fs.count())
             self.assertListEqual(names, sorted(fs.iter_names()))
@@ -105,4 +110,65 @@ class StandardFSChecks(object):
                     _ = fs.sample_names(1)
 
             # iter and sample files
+            self.assertListEqual(
+                [(n, to_bytes(n) + b' content') for n in names],
+                list(fs.iter_files())
+            )
 
+            if capacity.can_random_sample():
+                for repeated in range(10):
+                    for k in range(len(names)):
+                        samples = fs.sample_files(k)
+                        self.assertIsInstance(samples, list)
+                        self.assertEquals(k, len(samples))
+                        for sample in samples:
+                            self.assertIn(sample[0], names)
+                            self.assertEquals(get_content(sample[0]), sample[1])
+            else:
+                with pytest.raises(UnsupportedOperation):
+                    _ = fs.sample_names(1)
+
+            # retrieve, get data and open
+            for n in names:
+                self.assertEquals(get_content(n), fs.retrieve(n))
+                self.assertEquals(get_content(n), fs.get_data(n))
+                with fs.open(n, 'r') as f:
+                    self.assertEquals(get_content(n), f.read())
+
+            # isfile, batch_isfile
+            for n in names:
+                self.assertTrue(fs.isfile(n))
+                self.assertFalse(fs.isfile(n + '.invalid-ext'))
+            self.assertListEqual([True] * len(names), fs.batch_isfile(names))
+            self.assertListEqual(
+                [True, False] * len(names),
+                fs.batch_isfile(sum(
+                    [[n, n + '.invalid-ext'] for n in names], []))
+            )
+
+    def check_write(self, capacity):
+        with self.temporary_fs() as fs:
+            self.assertDictEqual({}, self.get_snapshot(fs))
+
+            # put_data
+            fs.put_data('a/1.txt', b'a/1.txt content')
+            fs.put_data('b/2.txt', BytesIO(b'b/2.txt content'))
+            with pytest.raises(TypeError, match='`data` must be bytes or a '
+                                                'file-like object'):
+                fs.put_data('err1.txt', u'')
+            with pytest.raises(TypeError, match='`data` must be bytes or a '
+                                                'file-like object'):
+                fs.put_data('err2.txt', object())
+
+            # open
+            with fs.open('c/3.txt', 'w') as f:
+                f.write(b'c/3.txt content')
+
+            self.assertDictEqual(
+                {
+                    'a/1.txt': (b'a/1.txt content',),
+                    'b/2.txt': (b'b/2.txt content',),
+                    'c/3.txt': (b'c/3.txt content',)
+                },
+                self.get_snapshot(fs)
+            )
