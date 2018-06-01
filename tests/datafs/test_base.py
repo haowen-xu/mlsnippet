@@ -159,7 +159,7 @@ class ExtendedLocalFS(LocalFS):
         return ExtendedLocalFS(self.root_dir, strict=self.strict)
 
     def sample_names(self, n_samples):
-        return random.choices(self.list_names(), k=n_samples)
+        return [random.choice(self.list_names()) for _ in range(n_samples)]
 
     def list_meta(self, filename):
         if not self.isfile(filename):

@@ -1,6 +1,4 @@
 import collections
-import operator
-from functools import reduce
 
 import six
 

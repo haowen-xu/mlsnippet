@@ -85,9 +85,13 @@ class TarArchiveFS(_ArchiveFS):
         self.init()
         for mi in self._file_obj:
             if not mi.isdir():
-                with self._file_obj.extractfile(mi) as f:
+                f = self._file_obj.extractfile(mi)
+                try:
                     cnt = f.read()
-                yield self._canonical_path(mi.name), cnt
+                    yield self._canonical_path(mi.name), cnt
+                finally:
+                    if hasattr(f, 'close'):
+                        f.close()
 
     def open(self, filename, mode):
         self.init()
@@ -143,9 +147,13 @@ class ZipArchiveFS(_ArchiveFS):
         self.init()
         for mi in self._file_obj.infolist():
             if not self._isdir(mi):
-                with self._file_obj.open(mi) as f:
+                f = self._file_obj.open(mi)
+                try:
                     cnt = f.read()
-                yield self._canonical_path(mi.filename), cnt
+                    yield self._canonical_path(mi.filename), cnt
+                finally:
+                    if hasattr(f, 'close'):
+                        f.close()
 
     def open(self, filename, mode):
         self.init()

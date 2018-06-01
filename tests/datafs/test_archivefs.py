@@ -22,8 +22,7 @@ class TarArchiveFSTestCase(unittest.TestCase, StandardFSChecks):
         ret = {}
         for mi in fs._file_obj:
             if not mi.isdir():
-                with fs._file_obj.extractfile(mi) as f:
-                    cnt = f.read()
+                cnt = fs._file_obj.extractfile(mi).read()
                 ret[canonical_path(mi.name)] = (cnt,)
         return ret
 
@@ -65,8 +64,7 @@ class ZipArchiveFSTestCase(unittest.TestCase, StandardFSChecks):
         ret = {}
         for mi in fs._file_obj.infolist():
             if mi.filename[-1] != '/':
-                with fs._file_obj.open(mi) as f:
-                    cnt = f.read()
+                cnt = fs._file_obj.open(mi).read()
                 ret[canonical_path(mi.filename)] = (cnt,)
         return ret
 
