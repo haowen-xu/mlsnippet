@@ -3,6 +3,7 @@ from contextlib import contextmanager
 
 import os
 
+import pytest
 import six
 
 from mltoolkit.utils import TemporaryDirectory, makedirs
@@ -22,19 +23,31 @@ class LocalFSTestCase(unittest.TestCase, StandardFSChecks):
         return ret
 
     @contextmanager
-    def temporary_fs(self, snapshot=None):
+    def temporary_fs(self, snapshot=None, **kwargs):
         with TemporaryDirectory() as tempdir:
             if snapshot:
-                for filename, (content,) in six.iteritems(snapshot):
+                for filename, payload in six.iteritems(snapshot):
+                    content = payload[0]
                     file_path = os.path.join(tempdir, filename)
                     file_dir = os.path.split(file_path)[0]
                     makedirs(file_dir, exist_ok=True)
                     with open(file_path, 'wb') as f:
                         f.write(content)
-            yield LocalFS(tempdir)
+            with LocalFS(tempdir, **kwargs) as fs:
+                yield fs
 
     def test_standard(self):
         self.run_standard_checks(DataFSCapacity.READ_WRITE_DATA)
+
+    def test_errors(self):
+        with pytest.raises(IOError, match='Not a directory'):
+            _ = LocalFS('/this/path/cannot/be/a/directory')
+        with TemporaryDirectory() as tempdir:
+            f_path = os.path.join(tempdir, '1.dat')
+            with open(f_path, 'wb') as f:
+                f.write(b'')
+            with pytest.raises(IOError, match='Not a directory'):
+                _ = LocalFS(f_path)
 
 
 if __name__ == '__main__':

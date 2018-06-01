@@ -2,13 +2,12 @@ import functools
 import gc
 import os
 import unittest
-from tempfile import TemporaryDirectory
 
 import pytest
 from mock import Mock
 
 from mltoolkit.datafs import ActiveFiles, iter_files
-from mltoolkit.utils import makedirs
+from mltoolkit.utils import makedirs, TemporaryDirectory
 
 
 class ActiveFilesTestCase(unittest.TestCase):

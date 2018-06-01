@@ -28,6 +28,11 @@ class ExceptionsTestCase(unittest.TestCase):
         self.assertEquals('In file \'data file\': '
                           'meta key not exist: \'meta key\'', str(e))
 
+    def test_InvalidOpenMode(self):
+        e = InvalidOpenMode('invalid mode')
+        self.assertEquals('invalid mode', e.mode)
+        self.assertEquals('Invalid open mode: \'invalid mode\'', str(e))
+
 
 class DataFSCapacityTestCase(unittest.TestCase):
 
@@ -82,15 +87,17 @@ class DataFSCapacityTestCase(unittest.TestCase):
 class DataFSTestCase(unittest.TestCase):
 
     def test_props(self):
-        self.assertFalse(DataFS().strict)
-        self.assertTrue(DataFS(strict=True).strict)
+        capacity = DataFSCapacity(DataFSCapacity.ALL)
+        self.assertFalse(DataFS(capacity).strict)
+        self.assertTrue(DataFS(capacity, strict=True).strict)
 
     def test_as_flow(self):
         class DummyFS(DataFS):
             def __init__(self):
-                super(DummyFS, self).__init__()
+                super(DummyFS, self).__init__(
+                    capacity=DataFSCapacity(DataFSCapacity.ALL)
+                )
                 self.clone = Mock(return_value=cloned)
-                self._capacity = DataFSCapacity(DataFSCapacity.ALL)
 
             @property
             def capacity(self):
@@ -161,17 +168,27 @@ class ExtendedLocalFS(LocalFS):
         self._file_meta_dict = defaultdict(lambda: {})
         self._capacity = DataFSCapacity(DataFSCapacity.ALL)
 
+    def clone(self):
+        return ExtendedLocalFS(self.root_dir, strict=self.strict)
+
     def sample_names(self, n_samples):
         return random.choices(self.list_names(), k=n_samples)
 
     def list_meta(self, filename):
-        return list(self._file_meta_dict[filename].keys())
+        if not self.isfile(filename):
+            raise DataFileNotExist(filename)
+        return tuple(self._file_meta_dict[filename].keys())
 
     def get_meta(self, filename, meta_keys):
+        meta_keys = tuple(meta_keys or ())
+        if not self.isfile(filename):
+            raise DataFileNotExist(filename)
         meta_dict = self._file_meta_dict[filename]
-        return [meta_dict.get(k, None) for k in meta_keys]
+        return tuple(meta_dict.get(k, None) for k in meta_keys)
 
     def put_meta(self, filename, meta_dict=None, **meta_dict_kwargs):
+        if not self.isfile(filename):
+            raise DataFileNotExist(filename)
         merged = {}
         if meta_dict:
             merged.update(dict(meta_dict))
@@ -180,6 +197,8 @@ class ExtendedLocalFS(LocalFS):
         self._file_meta_dict[filename].update(merged)
 
     def clear_meta(self, filename):
+        if not self.isfile(filename):
+            raise DataFileNotExist(filename)
         self._file_meta_dict[filename] = {}
 
 
@@ -198,16 +217,22 @@ class ExtendedLocalFSTestCase(unittest.TestCase, StandardFSChecks):
         return ret
 
     @contextmanager
-    def temporary_fs(self, snapshot=None):
+    def temporary_fs(self, snapshot=None, **kwargs):
         with TemporaryDirectory() as tempdir:
+            fs = ExtendedLocalFS(tempdir, **kwargs)
             if snapshot:
-                for filename, (content,) in six.iteritems(snapshot):
+                for filename, payload in six.iteritems(snapshot):
+                    content = payload[0]
+                    meta_dict = payload[1] if len(payload) > 1 else None
                     file_path = os.path.join(tempdir, filename)
                     file_dir = os.path.split(file_path)[0]
                     makedirs(file_dir, exist_ok=True)
                     with open(file_path, 'wb') as f:
                         f.write(content)
-            yield ExtendedLocalFS(tempdir)
+                    if meta_dict:
+                        fs.put_meta(filename, meta_dict)
+            with fs:
+                yield fs
 
     def test_standard(self):
         self.run_standard_checks(DataFSCapacity.ALL)

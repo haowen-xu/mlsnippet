@@ -5,36 +5,30 @@ import zipfile
 from .utils import ActiveFiles
 from .base import *
 
-try:
-    import rarfile
-    rarfile.PATH_SEP = '/'
-except ImportError:
-    rarfile = None
-
-__all__ = ['TarArchiveFS', 'ZipArchiveFS', 'RarArchiveFS']
+__all__ = ['TarArchiveFS', 'ZipArchiveFS']
 
 
 class _ArchiveFS(DataFS):
+    """Base class for archive file based :class:`DataFS`."""
 
-    def __init__(self, archive_file, capacity, strict):
-        super(_ArchiveFS, self).__init__(strict=strict)
+    def __init__(self, archive_file, strict):
+        super(_ArchiveFS, self).__init__(
+            capacity=DataFSCapacity(DataFSCapacity.READ_DATA),
+            strict=strict
+        )
 
         archive_file = os.path.abspath(archive_file)
         if not os.path.isfile(archive_file):
             raise IOError('Not a file: {!r}'.format(archive_file))
         self._archive_file = archive_file
-        self._capacity = capacity
 
     @property
     def archive_file(self):
+        """Get the absolute path of the archive file."""
         return self._archive_file
 
-    @property
-    def capacity(self):
-        return self._capacity
-
     def clone(self):
-        return self.__class__(self.archive_file)
+        return self.__class__(self.archive_file, strict=self.strict)
 
     def _canonical_path(self, path):
         return path.replace('\\', '/')
@@ -56,13 +50,18 @@ class _ArchiveFS(DataFS):
 
 
 class TarArchiveFS(_ArchiveFS):
+    """Tar archive file based :class:`DataFS`."""
 
     def __init__(self, archive_file, strict=False):
-        super(TarArchiveFS, self).__init__(
-            archive_file,
-            DataFSCapacity(DataFSCapacity.READ_DATA),
-            strict=strict
-        )
+        """
+        Construct a new :class:`TarArchiveFS`.
+
+        Args:
+            archive_file (str): Path of the archive file.
+            strict (bool): Whether or not this :class:`DataFS` works in
+                strict mode?  (default :obj:`False`)
+        """
+        super(TarArchiveFS, self).__init__(archive_file, strict=strict)
         self._file_obj = None  # type: tarfile.TarFile
         self._active_files = ActiveFiles()
 
@@ -85,8 +84,9 @@ class TarArchiveFS(_ArchiveFS):
         self.init()
         for mi in self._file_obj:
             if not mi.isdir():
-                yield (self._canonical_path(mi.name),
-                       self._file_obj.extractfile(mi))
+                with self._file_obj.extractfile(mi) as f:
+                    cnt = f.read()
+                yield self._canonical_path(mi.name), cnt
 
     def open(self, filename, mode):
         self.init()
@@ -94,7 +94,7 @@ class TarArchiveFS(_ArchiveFS):
             mi = self._file_obj.getmember(filename)
             return self._active_files.add(self._file_obj.extractfile(mi))
         else:
-            raise UnsupportedOperation('Invalid open mode {!r}'.format(mode))
+            raise InvalidOpenMode(mode)
 
     def isfile(self, filename):
         try:
@@ -105,13 +105,18 @@ class TarArchiveFS(_ArchiveFS):
 
 
 class ZipArchiveFS(_ArchiveFS):
+    """Zip archive file based :class:`DataFS`."""
 
     def __init__(self, archive_file, strict=False):
-        super(ZipArchiveFS, self).__init__(
-            archive_file,
-            DataFSCapacity(DataFSCapacity.READ_DATA),
-            strict=strict
-        )
+        """
+        Construct a new :class:`ZipArchiveFS`.
+
+        Args:
+            archive_file (str): Path of the archive file.
+            strict (bool): Whether or not this :class:`DataFS` works in
+                strict mode?  (default :obj:`False`)
+        """
+        super(ZipArchiveFS, self).__init__(archive_file, strict=strict)
         self._file_obj = None  # type: zipfile.ZipFile
         self._active_files = ActiveFiles()
 
@@ -137,68 +142,19 @@ class ZipArchiveFS(_ArchiveFS):
         self.init()
         for mi in self._file_obj.infolist():
             if not self._isdir(mi):
-                yield (self._canonical_path(mi.filename),
-                       self._file_obj.open(mi))
+                with self._file_obj.open(mi) as f:
+                    cnt = f.read()
+                yield self._canonical_path(mi.filename), cnt
 
     def open(self, filename, mode):
         self.init()
         if mode != 'r':
-            raise ValueError('Invalid open mode {!r}'.format(mode))
+            raise InvalidOpenMode(mode)
         return self._active_files.add(self._file_obj.open(filename, mode=mode))
 
     def isfile(self, filename):
         try:
             mi = self._file_obj.getinfo(filename)
             return not self._isdir(mi)
-        except KeyError:
-            return False
-
-
-class RarArchiveFS(_ArchiveFS):
-
-    def __init__(self, archive_file, strict=False):
-        if rarfile is None:
-            raise RuntimeError('Python package `rarfile` is missing.')
-        super(RarArchiveFS, self).__init__(
-            archive_file,
-            DataFSCapacity(DataFSCapacity.READ_DATA),
-            strict=strict
-        )
-        self._file_obj = None  # type: rarfile.RarFile
-
-    def _init(self):
-        self._file_obj = rarfile.RarFile(self.archive_file, 'r')
-
-    def _close(self):
-        self._active_files.close_all()
-        self._file_obj.close()
-
-    def iter_names(self):
-        self.init()
-        for mi in self._file_obj.infolist():
-            if not mi.isdir():
-                yield self._canonical_path(mi.filename)
-
-    def iter_files(self, meta_keys=None):
-        if meta_keys:
-            raise UnsupportedOperation()
-        self.init()
-        for mi in self._file_obj.infolist():
-            if not mi.isdir():
-                yield (self._canonical_path(mi.filename),
-                       self._file_obj.open(mi))
-
-    def open(self, filename, mode):
-        self.init()
-        if mode == 'r':
-            mi = self._file_obj.getinfo(filename)
-            return self._active_files.add(self._file_obj.open(mi))
-        else:
-            raise ValueError('Invalid open mode {!r}'.format(mode))
-
-    def isfile(self, filename):
-        try:
-            mi = self._file_obj.getinfo(filename)
-            return not mi.isdir()
         except KeyError:
             return False

@@ -8,6 +8,7 @@ from mltoolkit.utils import DocInherit, AutoInitAndCloseable
 
 __all__ = [
     'UnsupportedOperation',
+    'InvalidOpenMode',
     'DataFileNotExist',
     'MetaKeyNotExist',
     'DataFSCapacity',
@@ -20,6 +21,22 @@ class UnsupportedOperation(Exception):
     Class to indicate that a requested operation is not supported by the
     specific :class:`DataFS` subclass.
     """
+
+
+class InvalidOpenMode(UnsupportedOperation, ValueError):
+    """
+    Class to indicate that the specified open mode is not supported.
+    """
+
+    def __init__(self, mode):
+        super(InvalidOpenMode, self).__init__(mode)
+
+    @property
+    def mode(self):
+        return self.args[0]
+
+    def __str__(self):
+        return 'Invalid open mode: {!r}'.format(self.mode)
 
 
 class DataFileNotExist(KeyError, IOError):
@@ -164,11 +181,12 @@ class DataFS(AutoInitAndCloseable):
     _initialized = False
     """Whether or not this :class:`DataFS` has been initialized?"""
 
-    def __init__(self, strict=False):
+    def __init__(self, capacity, strict=False):
         """
-        Construct a new :class:`DataFS`.
+        Initialize the base :class:`DataFS` class.
 
         Args:
+            capacity (DataFSCapacity): Specify the capacity of the subclass.
             strict (bool): Whether or not this :class:`DataFS` works in
                 strict mode?  (default :obj:`False`)
 
@@ -177,7 +195,18 @@ class DataFS(AutoInitAndCloseable):
                 1. Accessing the value of a non-exist meta key will cause
                    a :class:`MetaKeyNotExist`, instead of getting :obj:`None`.
         """
+        self._capacity = capacity
         self._strict = strict
+
+    @property
+    def capacity(self):
+        """
+        Get the capacity of this :class:`DataFS`.
+
+        Returns:
+            DataFSCapacity: The capacity object.
+        """
+        return self._capacity
 
     @property
     def strict(self):
@@ -280,16 +309,6 @@ class DataFS(AutoInitAndCloseable):
         """
         raise NotImplementedError()
 
-    @property
-    def capacity(self):
-        """
-        Get the capacity of this :class:`DataFS`.
-
-        Returns:
-            DataFSCapacity: The capacity object.
-        """
-        raise NotImplementedError()
-
     def count(self):
         """
         Count the files in this :class:`DataFS`.
@@ -380,8 +399,9 @@ class DataFS(AutoInitAndCloseable):
                 take the place.
 
         Raises:
-            UnsupportedOperation: If ``meta_keys`` is specified, but
-                ``READ_META`` capacity is absent.
+            UnsupportedOperation: If ``RANDOM_SAMPLE`` capacity is absent,
+                or ``meta_keys`` is specified, but ``READ_META`` capacity
+                is absent.
         """
         meta_keys = tuple(meta_keys or ())
         names = self.sample_names(n_samples)
@@ -470,9 +490,8 @@ class DataFS(AutoInitAndCloseable):
                 closed as soon as this :class:`DataFS` instance is closed.
 
         Raises:
-            UnsupportedOperation: If the specified mode is not supported,
+            InvalidOpenMode: If the specified mode is not supported,
                 e.g., ``mode == 'w'`` but ``WRITE_DATA`` capacity is absent.
-
         """
         raise NotImplementedError()
 
@@ -511,9 +530,10 @@ class DataFS(AutoInitAndCloseable):
             filename (str): The name of the file.
 
         Returns:
-            list[str]: The keys of the meta data of the file.
+            tuple[str]: The keys of the meta data of the file.
 
         Raises:
+            DataFileNotExist: If `filename` does not exist.
             UnsupportedOperation: If the ``LIST_META`` capacity is absent.
         """
         raise NotImplementedError()
@@ -527,11 +547,12 @@ class DataFS(AutoInitAndCloseable):
             meta_keys (Iterable[str]): The keys of the meta data.
 
         Returns:
-            list[any]: The meta values, corresponding to ``meta_keys``.
+            tuple[any]: The meta values, corresponding to ``meta_keys``.
                 If a requested key is absent for a file, :obj:`None` will
                 take the place.
 
         Raises:
+            DataFileNotExist: If `filename` does not exist.
             UnsupportedOperation: If the ``READ_META`` capacity is absent.
         """
         raise NotImplementedError()
@@ -548,9 +569,14 @@ class DataFS(AutoInitAndCloseable):
             list[tuple[any] or None]: A list of meta values, or :obj:`None`
                 if the corresponding file does not exist.
         """
-        if meta_keys is not None:
-            meta_keys = tuple(meta_keys)
-        return [self.get_meta(name, meta_keys) for name in filenames]
+        meta_keys = tuple(meta_keys or ())
+        ret = []
+        for name in filenames:
+            try:
+                ret.append(self.get_meta(name, meta_keys))
+            except DataFileNotExist:
+                ret.append(None)
+        return ret
 
     def get_meta_dict(self, filename):
         """
@@ -563,6 +589,7 @@ class DataFS(AutoInitAndCloseable):
             dict[str, any]: The meta values, as a dict.
 
         Raises:
+            DataFileNotExist: If `filename` does not exist.
             UnsupportedOperation: If the ``READ_META`` or ``LIST_META``
                 capacity is absent.
         """
@@ -586,6 +613,7 @@ class DataFS(AutoInitAndCloseable):
                 ``meta_dict``.
 
         Raises:
+            DataFileNotExist: If `filename` does not exist.
             UnsupportedOperation: If the ``WRITE_META`` capacity (and
                 possibly the ``READ_META`` capacity) is(are) absent.
         """
@@ -604,7 +632,9 @@ class DataFS(AutoInitAndCloseable):
                 ``meta_dict``.
 
         Raises:
-            UnsupportedOperation: If the ``WRITE_META`` capacity is absent.
+            DataFileNotExist: If `filename` does not exist.
+            UnsupportedOperation: If the ``WRITE_META`` capacity (and
+                possibly the ``LIST_META`` capacity) is(are) absent.
         """
         self.clear_meta(filename)
         self.put_meta(filename, meta_dict, **meta_dict_kwargs)
@@ -617,6 +647,7 @@ class DataFS(AutoInitAndCloseable):
             filename (str): The name of the file.
 
         Raises:
+            DataFileNotExist: If `filename` does not exist.
             UnsupportedOperation: If the ``WRITE_META`` capacity (and
                 possibly the ``LIST_META`` capacity) is(are) absent.
         """

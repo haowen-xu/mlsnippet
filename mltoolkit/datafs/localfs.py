@@ -8,9 +8,7 @@ __all__ = ['LocalFS']
 
 
 class LocalFS(DataFS):
-    """
-    A :class:`DataFS` backed by local file system.
-    """
+    """Local directory based :class:`DataFS`."""
 
     def __init__(self, root_dir, strict=False):
         """
@@ -21,28 +19,27 @@ class LocalFS(DataFS):
             strict (bool): Whether or not this :class:`DataFS` works in
                 strict mode?  (default :obj:`False`)
         """
-        super(LocalFS, self).__init__(strict=strict)
+        super(LocalFS, self).__init__(
+            capacity=DataFSCapacity(
+                DataFSCapacity.READ_DATA,
+                DataFSCapacity.WRITE_DATA,
+            ),
+            strict=strict
+        )
 
         root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(root_dir):
             raise IOError('Not a directory: {!r}'.format(root_dir))
         self._root_dir = root_dir
-        self._capacity = DataFSCapacity(
-            DataFSCapacity.READ_DATA,
-            DataFSCapacity.WRITE_DATA,
-        )
         self._active_files = ActiveFiles()
 
     @property
     def root_dir(self):
+        """Get the absolute path of the root directory."""
         return self._root_dir
 
-    @property
-    def capacity(self):
-        return self._capacity
-
     def clone(self):
-        return LocalFS(self.root_dir)
+        return LocalFS(self.root_dir, strict=self.strict)
 
     def _init(self):
         pass
@@ -67,7 +64,7 @@ class LocalFS(DataFS):
             makedirs(parent_dir, exist_ok=True)
             return self._active_files.add(open(file_path, 'wb'))
         else:
-            raise ValueError('Invalid open mode {!r}'.format(mode))
+            raise InvalidOpenMode(mode)
 
     def isfile(self, filename):
         return os.path.isfile(os.path.join(self.root_dir, filename))

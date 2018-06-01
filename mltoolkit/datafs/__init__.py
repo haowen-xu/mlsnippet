@@ -15,5 +15,5 @@ try:
     from . import dataflow
     from .dataflow import *
     __all__ += dataflow.__all__
-except ImportError:
+except ImportError:  # pragma: no cover
     pass

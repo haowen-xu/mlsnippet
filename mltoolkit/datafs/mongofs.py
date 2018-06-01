@@ -3,7 +3,7 @@ from pymongo import MongoClient, CursorType
 from pymongo.database import Database
 from pymongo.collection import Collection
 
-from .base import DataFS, DataFSCapacity, DataFileNotExist, MetaKeyNotExist
+from .base import *
 from .utils import ActiveFiles
 
 __all__ = ['MongoFS']
@@ -12,9 +12,29 @@ META_FIELD = 'metadata'
 
 
 class MongoFS(DataFS):
+    """
+    MongoDB GridFS based :class:`DataFS`.
+
+    This class provides a :class:`DataFS`, which saves the files in
+    a MongoDB GridFS, and stores the meta values in ``metadata`` field
+    of each record in the fs collection.
+    """
 
     def __init__(self, conn_str, db_name, coll_name, strict=False):
-        super(MongoFS, self).__init__(strict=strict)
+        """
+        Construct a new :class:`MongoFS`.
+
+        Args:
+            conn_str (str): The MongoDB connection string.
+            db_name (str): The MongoDB database name.
+            coll_name (str): The collection name (prefix) of the GridFS.
+            strict (bool): Whether or not this :class:`DataFS` works in
+                strict mode?  (default :obj:`False`)
+        """
+        super(MongoFS, self).__init__(
+            capacity=DataFSCapacity(DataFSCapacity.ALL),
+            strict=strict
+        )
 
         self._conn_str = conn_str
         self._db_name = db_name
@@ -36,7 +56,6 @@ class MongoFS(DataFS):
             get_meta_value = lambda r, m, k: m.get(k)
 
         self._get_meta_value_from_record = get_meta_value
-        self._capacity = DataFSCapacity(DataFSCapacity.ALL)
         self._active_files = ActiveFiles()
 
     def _make_query_project(self, meta_keys=None, _id=1, filename=1):
@@ -62,42 +81,76 @@ class MongoFS(DataFS):
 
     @property
     def conn_str(self):
+        """Get the MongoDB connection string."""
         return self._conn_str
 
     @property
     def db_name(self):
+        """Get the MongoDB database name."""
         return self._db_name
 
     @property
     def coll_name(self):
+        """Get the collection name (prefix) of the GridFS."""
         return self._coll_name
 
     @property
-    def strict(self):
-        return self._strict
-
-    @property
     def client(self):
+        """
+        Get the MongoDB client.  Reading this property will force
+        the internal states of :class:`MongoFS` to be initialized.
+
+        Returns:
+            MongoClient: The MongoDB client.
+        """
         self.init()
         return self._client
 
     @property
     def db(self):
+        """
+        Get the MongoDB database object.  Reading this property will force
+        the internal states of :class:`MongoFS` to be initialized.
+
+        Returns:
+            Database: The MongoDB database object.
+        """
         self.init()
         return self._db
 
     @property
     def gridfs(self):
+        """
+        Get the MongoDB GridFS client.  Reading this property will force
+        the internal states of :class:`MongoFS` to be initialized.
+
+        Returns:
+            GridFS: The MongoDB GridFS client.
+        """
         self.init()
         return self._gridfs
 
     @property
     def gridfs_bucket(self):
+        """
+        Get the MongoDB GridFS bucket.  Reading this property will force
+        the internal states of :class:`MongoFS` to be initialized.
+
+        Returns:
+            GridFSBucket: The MongoDB GridFS bucket.
+        """
         self.init()
         return self._gridfs_bucket
 
     @property
     def collection(self):
+        """
+        Get the MongoDB collection object.  Reading this property will force
+        the internal states of :class:`MongoFS` to be initialized.
+
+        Returns:
+            Collection: The MongoDB collection object.
+        """
         self.init()
         return self._collection
 
@@ -119,11 +172,8 @@ class MongoFS(DataFS):
             self._client = None
 
     def clone(self):
-        return MongoFS(self.conn_str, self.db_name, self.coll_name)
-
-    @property
-    def capacity(self):
-        return self._capacity
+        return MongoFS(self.conn_str, self.db_name, self.coll_name,
+                       strict=self.strict)
 
     def count(self):
         return self.collection.files.count()
@@ -189,6 +239,8 @@ class MongoFS(DataFS):
                 self.gridfs.delete(f['_id'])
             return self._active_files.add(
                 self.gridfs_bucket.open_upload_stream(filename))
+        else:
+            raise InvalidOpenMode(mode)
 
     def isfile(self, filename):
         return self.gridfs.exists({'filename': filename})
