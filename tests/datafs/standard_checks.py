@@ -6,7 +6,6 @@ import six
 from mock import Mock
 
 from mltoolkit.datafs import *
-from mltoolkit.datafs import UnsupportedOperation, DataFileNotExist
 
 
 class StandardFSChecks(object):
@@ -166,7 +165,7 @@ class StandardFSChecks(object):
             for n in names:
                 self.assertEquals(get_content(n), fs.retrieve(n))
                 self.assertEquals(get_content(n), fs.get_data(n))
-                with fs.open(n, 'r') as f:
+                with maybe_close(fs.open(n, 'r')) as f:
                     self.assertEquals(get_content(n), f.read())
 
             # isfile, batch_isfile
@@ -191,7 +190,7 @@ class StandardFSChecks(object):
                 with pytest.raises(UnsupportedOperation):
                     _ = fs.put_data('b/2.txt', BytesIO(b'b/2.txt content'))
                 with pytest.raises(UnsupportedOperation):
-                    with fs.open('c/3.txt', 'w') as f:
+                    with maybe_close(fs.open('c/3.txt', 'w')) as f:
                         f.write(b'c/3.txt content')
             return
 
@@ -209,11 +208,12 @@ class StandardFSChecks(object):
                 fs.put_data('err2.txt', object())
 
             # open
-            with fs.open('c/3.txt', 'w') as f:
+            with maybe_close(fs.open('c/3.txt', 'w')) as f:
                 f.write(b'c/3.txt content')
             with pytest.raises(UnsupportedOperation,
                                match='Invalid open mode'):
-                with fs.open('d/4.txt', 'not-a-possible-write-mode') as f:
+                with maybe_close(
+                        fs.open('d/4.txt', 'not-a-possible-write-mode')) as f:
                     f.write(b'')
 
             self.assertDictEqual(
