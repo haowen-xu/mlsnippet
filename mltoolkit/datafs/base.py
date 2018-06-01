@@ -1,4 +1,5 @@
 import collections
+import re
 
 import six
 
@@ -159,16 +160,15 @@ class DataFS(AutoInitAndCloseable):
     def as_flow(self, batch_size, with_names=True, meta_keys=None,
                 shuffle=False, skip_incomplete=False, names_pattern=None):
         """
-        Construct a :class:`~mltoolkit.datafs.DataFSFlow`,
-        a :class:`~tfsnippet.dataflow.DataFlow` driven by :meth:`iter_files`,
-        :class:`iter_names` and :class:`retrieve`.
+        Construct a :class:`~tfsnippet.dataflow.DataFlow`, which iterates
+        through the files once and only once in an epoch.
 
         The returned :class:`~mltoolkit.datafs.DataFSFlow` will hold a copy
         of this instance (obtained by :meth:`clone()`) instead of holding
         this instance itself.
 
         Args:
-            batch_size (int): The mini-batch size of the returned flow.
+            batch_size (int): Size of each mini-batch.
             with_names (bool): Whether or not to include the file names
                 in the returned flow? (default :obj:`True`)
             meta_keys (None or Iterable[str]): The keys of the meta data
@@ -176,54 +176,118 @@ class DataFS(AutoInitAndCloseable):
             shuffle (bool): Whether or not to shuffle the files in each
                 epoch of the flow?  Setting this to :obj:`True` will force
                 loading the file list into memory.  (default :obj:`False`)
-            skip_incomplete (bool): Whether or not to skip the final
-                mini-batch, if it has fewer data than ``batch_size``?
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
                 (default :obj:`False`, the final mini-batch will always
                  be visited even if it has fewer data than ``batch_size``)
             names_pattern (None or str or regex): The file name pattern.
                 If specified, only if the file name matches this pattern,
                 would the file be included in the constructed data flow.
-                (default :obj:`None`)
+                Specifying this option will force loading the file list
+                into memory. (default :obj:`None`)
 
         Returns:
-            mltoolkit.datafs.DataFSFlow: A dataflow, with each mini-batch
+            tfsnippet.dataflow.DataFlow: A dataflow, with each mini-batch
                 having numpy arrays ``([filename,] content, [meta-data...])``,
                 according to the arguments.
         """
-        from .dataflow import DataFSFlow
-        return DataFSFlow(
-            self.clone(),
+        from .dataflow import DataFSForwardFlow, DataFSIndexedFlow
+
+        # quick path: use forward flow if no shuffling and name filtering
+        if not shuffle and names_pattern is None:
+            return DataFSForwardFlow(
+                fs=self.clone(),
+                batch_size=batch_size,
+                with_names=with_names,
+                meta_keys=meta_keys,
+                skip_incomplete=skip_incomplete,
+            )
+
+        # slow path: load the names, then do filtering if required,
+        # and use indexed flow to serve
+        else:
+            if names_pattern is None:
+                names = self.list_names()
+            else:
+                names_pattern = re.compile(names_pattern)
+                names = [n for n in self.iter_names() if names_pattern.match(n)]
+            return DataFSIndexedFlow(
+                fs=self.clone(),
+                names=names,
+                batch_size=batch_size,
+                with_names=with_names,
+                meta_keys=meta_keys,
+                shuffle=shuffle,
+                skip_incomplete=skip_incomplete,
+            )
+
+    def sub_flow(self, batch_size, names, with_names=True, meta_keys=None,
+                 shuffle=False, skip_incomplete=False):
+        """
+        Construct a :class:`~tfsnippet.dataflow.DataFlow`, which iterates
+        through the files according to selected `names`.
+
+        The returned :class:`~mltoolkit.datafs.DataFSFlow` will hold a copy
+        of this instance (obtained by :meth:`clone()`) instead of holding
+        this instance itself.
+
+        Args:
+            batch_size (int): Size of each mini-batch.
+            names (list[str]): The names of files to retrieve.
+            with_names (bool): Whether or not to include the file names
+                in the returned flow? (default :obj:`True`)
+            meta_keys (None or Iterable[str]): The keys of the meta data
+                to be included in the returned flow. (default :obj:`None`)
+            shuffle (bool): Whether or not to shuffle the files in each
+                epoch of the flow?  Setting this to :obj:`True` will force
+                loading the file list into memory.  (default :obj:`False`)
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
+                (default :obj:`False`, the final mini-batch will always
+                 be visited even if it has fewer data than ``batch_size``)
+
+        Returns:
+            tfsnippet.dataflow.DataFlow: A dataflow, with each mini-batch
+                having numpy arrays ``([filename,] content, [meta-data...])``,
+                according to the arguments.
+        """
+        from .dataflow import DataFSIndexedFlow
+        return DataFSIndexedFlow(
+            fs=self.clone(),
+            names=names,
+            batch_size=batch_size,
             with_names=with_names,
             meta_keys=meta_keys,
-            batch_size=batch_size,
             shuffle=shuffle,
             skip_incomplete=skip_incomplete,
-            names_pattern=names_pattern
         )
 
-    def as_random_flow(self, batch_size, with_names=True, meta_keys=None,
-                       skip_incomplete=False):
+    def random_flow(self, batch_size, with_names=True, meta_keys=None,
+                    skip_incomplete=False, batch_count=None):
         """
-        Construct a :class:`~mltoolkit.datafs.DataFSRandomFlow`,
-        a :class:`~tfsnippet.dataflow.DataFlow` driven by :meth:`random_sample`.
+        Construct a :class:`~tfsnippet.dataflow.DataFlow`, with infinite
+        or pre-configured number of mini-batches in an epoch, randomly
+        sampled from the whole :class:`DataFS`.
 
         The returned :class:`~mltoolkit.datafs.DataFSRandomFlow` will hold
         a copy of this instance (obtained by :meth:`clone()`) instead of
         holding this instance itself.
 
         Args:
-            batch_size (int): The mini-batch size of the returned flow.
+            batch_size (int): Size of each mini-batch.
             with_names (bool): Whether or not to include the file names
                 in the returned flow? (default :obj:`True`)
             meta_keys (None or Iterable[str]): The keys of the meta data
                 to be included in the returned flow. (default :obj:`None`)
-            skip_incomplete (bool): Whether or not to skip the mini-batches
-                with fewer data than ``batch_size``?
-                (default :obj:`False`, all the mini-batches will be visited
-                 even if having fewer data than ``batch_size``)
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
+                (default :obj:`False`, the final mini-batch will always
+                 be visited even if it has fewer data than ``batch_size``)
+            batch_count (int or None): The number of mini-batches to obtain
+                in an epoch.  (default :obj:`None`, infinite mini-batches)
 
         Returns:
-            mltoolkit.datafs.DataFSRandomFlow: A dataflow, with each mini-batch
+            tfsnippet.dataflow.DataFlow: A dataflow, with each mini-batch
                 having numpy arrays ``([filename,] content, [meta-data...])``,
                 according to the arguments.
 
@@ -234,10 +298,11 @@ class DataFS(AutoInitAndCloseable):
             raise UnsupportedOperation()
         from .dataflow import DataFSRandomFlow
         return DataFSRandomFlow(
-            self.clone(),
+            fs=self.clone(),
             with_names=with_names,
             meta_keys=meta_keys,
             batch_size=batch_size,
+            batch_count=batch_count,
             skip_incomplete=skip_incomplete
         )
 

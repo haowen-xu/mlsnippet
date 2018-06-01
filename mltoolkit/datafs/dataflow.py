@@ -1,6 +1,3 @@
-import functools
-import re
-
 import numpy as np
 import six
 
@@ -9,13 +6,35 @@ from tfsnippet.utils import AutoInitAndCloseable, minibatch_slices_iterator
 
 from .base import DataFS
 
-__all__ = ['DataFSFlow', 'DataFSRandomFlow']
+__all__ = [
+    'DataFSForwardFlow',
+    'DataFSIndexedFlow',
+    'DataFSRandomFlow'
+]
 
 
 class _BaseDataFSFlow(DataFlow, AutoInitAndCloseable):
+    """
+    Base class for all :class:`DataFS` derived :class:`DataFlow` subclasses.
+    """
 
     def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
                  skip_incomplete=False):
+        """
+        Initialize all internal states of the :class:`_BaseDataFSFlow`.
+
+        Args:
+            fs (DataFS): The data fs instance, where to read data.
+            batch_size (int): Size of each mini-batch.
+            with_names (bool): Whether or not to include the file names
+                in mini-batches? (default :obj:`True`)
+            meta_keys (None or Iterable[str]): The keys of the meta data
+                to be included in mini-batches. (default :obj:`None`)
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
+                (default :obj:`False`, the final mini-batch will always
+                 be visited even if it has fewer data than ``batch_size``)
+        """
         super(_BaseDataFSFlow, self).__init__()
         self._fs = fs  # type: DataFS
         self._batch_size = batch_size
@@ -36,20 +55,37 @@ class _BaseDataFSFlow(DataFlow, AutoInitAndCloseable):
     @property
     def skip_incomplete(self):
         """
-        Whether or not to exclude the last mini-batch if it is incomplete?
+        Whether or not to exclude a mini-batch, if it has fewer data than
+        ``batch_size``?
         """
         return self._skip_incomplete
 
     @property
     def fs(self):
+        """
+        Get the data fs instance.
+
+        Returns:
+            DataFS: The data fs instance.
+        """
         return self._fs
 
     @property
     def with_names(self):
+        """
+        Whether or not to include the file names in mini-batches?
+        """
         return self._with_names
 
     @property
     def meta_keys(self):
+        """
+        Get the keys of the meta data to be included in mini-batches.
+
+        Returns:
+            None or tuple[str]: The meta keys to retrieve, or None if not
+                configured.
+        """
         return self._meta_keys
 
     def _init(self):
@@ -60,6 +96,9 @@ class _BaseDataFSFlow(DataFlow, AutoInitAndCloseable):
 
 
 class _BatchArrayGenerator(object):
+    """
+    A helper class for gathering data from :class:`DataFS` into mini-batches.
+    """
 
     def __init__(self, batch_size, with_names, meta_keys):
         meta_keys = meta_keys or ()
@@ -108,93 +147,144 @@ class _BatchArrayGenerator(object):
         return len(self.buffers[0]) >= 0
 
 
-class DataFSFlow(_BaseDataFSFlow):
+class DataFSForwardFlow(_BaseDataFSFlow):
+    """
+    A :class:`DataFS` derived :class:`DataFlow`, iterating through mini-batches
+    in a forward-only fashion (data are obtained by :meth:`iter_files`).
+    """
 
     def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
-                 shuffle=False, skip_incomplete=False, names_pattern=None):
-        super(DataFSFlow, self).__init__(
-            fs, batch_size=batch_size, with_names=with_names,
-            meta_keys=meta_keys, skip_incomplete=skip_incomplete
-        )
-        self._is_shuffled = shuffle
-        self._cached_filenames = None
-        self._cached_indices = None
-        self._names_pattern = re.compile(names_pattern) \
-            if names_pattern is not None else None
+                 skip_incomplete=False):
+        """
+        Construct a new :class:`DataFSForwardFlow`.
 
-        # derive the function to test file name
-        if self._names_pattern is not None:
-            def _is_name_matched(n):
-                return self._names_pattern.match(n) is not None
-        else:
-            def _is_name_matched(n):
-                return True
-        self._is_name_matched = _is_name_matched
+        Args:
+            fs (DataFS): The data fs instance, where to read data.
+            batch_size (int): Size of each mini-batch.
+            with_names (bool): Whether or not to include the file names
+                in mini-batches? (default :obj:`True`)
+            meta_keys (None or Iterable[str]): The keys of the meta data
+                to be included in mini-batches. (default :obj:`None`)
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
+                (default :obj:`False`, the final mini-batch will always
+                 be visited even if it has fewer data than ``batch_size``)
+        """
+        super(DataFSForwardFlow, self).__init__(
+            fs=fs,
+            batch_size=batch_size,
+            with_names=with_names,
+            meta_keys=meta_keys,
+            skip_incomplete=skip_incomplete
+        )
+
+    def _minibatch_iterator(self):
+        g = _BatchArrayGenerator(
+            self.batch_size, self.with_names, self.meta_keys)
+        for f in self.fs.iter_files(meta_keys=self.meta_keys):
+            g.add(f[0], f[1], f[2:])
+            if g.full_batch:
+                yield g.to_arrays()
+                g.clear_all()
+        if g.not_empty and (g.full_batch or not self.skip_incomplete):
+            yield g.to_arrays()
+
+
+class DataFSIndexedFlow(_BaseDataFSFlow):
+    """
+    A :class:`DataFS` derived :class:`DataFlow`, iterating through mini-batches
+    according to given names (data are obtaining by :meth:`retrieve`).
+    """
+
+    def __init__(self, fs, batch_size, names, with_names=False, meta_keys=None,
+                 shuffle=False, skip_incomplete=False):
+        """
+        Construct a new :class:`DataFSIndexedFlow`.
+
+        Args:
+            fs (DataFS): The data fs instance, where to read data.
+            batch_size (int): Size of each mini-batch.
+            names (list[str]): The names of files to retrieve.
+            with_names (bool): Whether or not to include the file names
+                in mini-batches? (default :obj:`True`)
+            meta_keys (None or Iterable[str]): The keys of the meta data
+                to be included in mini-batches. (default :obj:`None`)
+            shuffle (bool): Whether or not to shuffle the name indices
+                before each epoch?  (default :obj:`False`)
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
+                (default :obj:`False`, the final mini-batch will always
+                 be visited even if it has fewer data than ``batch_size``)
+        """
+        super(DataFSIndexedFlow, self).__init__(
+            fs=fs,
+            batch_size=batch_size,
+            with_names=with_names,
+            meta_keys=meta_keys,
+            skip_incomplete=skip_incomplete
+        )
+        self._names = np.asarray(names, dtype=str)
+        self._is_shuffled = shuffle
+        self._cached_indices = None  # np.ndarray
+
+    @property
+    def names(self):
+        """
+        Get the names of files to retrieve.
+
+        Returns:
+            np.ndarray[str]: The names, as numpy array.
+        """
+        return self._names
 
     @property
     def is_shuffled(self):
         """
-        Whether or not the data are first shuffled before iterated through
-        mini-batches?
+        Whether or not to shuffle the names before each epoch?
         """
         return self._is_shuffled
 
-    @property
-    def names_pattern(self):
-        """
-        Get the regex pattern for filtering the file names.
-
-        Returns:
-            None or regex: The regex pattern for file names, or :obj:`None`
-                if the pattern is not set.
-        """
-        return self._names_pattern
-
-    def __natural_iterator(self):
-        g = _BatchArrayGenerator(
-            self.batch_size, self.with_names, self.meta_keys)
-        for f in self.fs.iter_files(meta_keys=self.meta_keys):
-            if self._is_name_matched(f[0]):
-                g.add(f[0], f[1], f[2:])
-                if g.full_batch:
-                    yield g.to_arrays()
-                    g.clear_all()
-        if g.not_empty and (g.full_batch or not self.skip_incomplete):
-            yield g.to_arrays()
-
-    def __shuffle_iterator(self):
-        # cache filenames
-        if self._cached_filenames is None:
-            if self._names_pattern is None:
-                self._cached_filenames = np.asarray(self.fs.list_names())
-            else:
-                self._cached_filenames = np.asarray([
-                    n for n in self.fs.iter_names()
-                    if self._is_name_matched(n)
-                ])
-        names = self._cached_filenames
-
+    def __shuffled_indices_iterator(self):
         # reuse indices
         if self._cached_indices is None:
-            indices_dtype = (np.int32 if len(names) <= np.iinfo(np.int32).max
-                             else np.int64)
-            self._cached_indices = np.arange(len(names), dtype=indices_dtype)
+            indices_dtype = (
+                np.int32 if len(self.names) <= np.iinfo(np.int32).max
+                else np.int64)
+            self._cached_indices = np.arange(
+                len(self.names), dtype=indices_dtype)
         indices = self._cached_indices
 
         # shuffle indices
         np.random.shuffle(indices)
 
+        for s in minibatch_slices_iterator(
+                length=len(self.names),
+                batch_size=self.batch_size,
+                skip_incomplete=self.skip_incomplete):
+            yield indices[s]
+
+    def __normal_indices_iterator(self):
+        return minibatch_slices_iterator(
+            length=len(self.names),
+            batch_size=self.batch_size,
+            skip_incomplete=self.skip_incomplete
+        )
+
+    def _minibatch_iterator(self):
         # iterate through mini-batches
+        if self.is_shuffled:
+            indices_iter = self.__shuffled_indices_iterator()
+        else:
+            indices_iter = self.__normal_indices_iterator()
+
+        # for gathering batch arrays
         g = _BatchArrayGenerator(
             self.batch_size, self.with_names, self.meta_keys)
-        mkiter = functools.partial(minibatch_slices_iterator,
-                                   length=len(names),
-                                   batch_size=self.batch_size,
-                                   skip_incomplete=self.skip_incomplete)
 
+        # produce the mini-batches
         if self.meta_keys:
-            for s in mkiter():
-                s_names = names[indices[s]]
+            for s in indices_iter:
+                s_names = self.names[s]
                 s_data = [self.fs.retrieve(name) for name in s_names]
                 s_meta = self.fs.batch_get_meta(s_names, self.meta_keys)
                 for n, d, m in zip(s_names, s_data, s_meta):
@@ -202,49 +292,61 @@ class DataFSFlow(_BaseDataFSFlow):
                 yield g.to_arrays()
                 g.clear_all()
         else:
-            for s in mkiter():
-                s_names = names[indices[s]]
+            for s in indices_iter:
+                s_names = self.names[s]
                 s_data = [self.fs.retrieve(name) for name in s_names]
                 for n, d in zip(s_names, s_data):
                     g.add(n, d)
                 yield g.to_arrays()
                 g.clear_all()
 
-    def _minibatch_iterator(self):
-        if self.is_shuffled:
-            return self.__shuffle_iterator()
-        else:
-            return self.__natural_iterator()
-
 
 class DataFSRandomFlow(_BaseDataFSFlow):
+    """
+    A :class:`DataFS` derived :class:`DataFlow`, obtaining random samples
+    from the :class:`DataFS`.
+    """
 
     def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
-                 epoch_size=None, skip_incomplete=False):
+                 batch_count=None, skip_incomplete=False):
+        """
+        Construct a new :class:`DataFSRandomFlow`.
+
+        Args:
+            fs (DataFS): The data fs instance, where to read data.
+            batch_size (int): Size of each mini-batch.
+            with_names (bool): Whether or not to include the file names
+                in mini-batches? (default :obj:`True`)
+            meta_keys (None or Iterable[str]): The keys of the meta data
+                to be included in mini-batches. (default :obj:`None`)
+            batch_count (int or None): The number of mini-batches to obtain
+                in an epoch.  (default :obj:`None`, infinite mini-batches)
+            skip_incomplete (bool): Whether or not to exclude a mini-batch,
+                if it has fewer data than ``batch_size``?
+                (default :obj:`False`, the final mini-batch will always
+                 be visited even if it has fewer data than ``batch_size``)
+        """
         super(DataFSRandomFlow, self).__init__(
             fs, batch_size=batch_size, with_names=with_names,
             meta_keys=meta_keys, skip_incomplete=skip_incomplete
         )
-        if epoch_size is not None:
-            if epoch_size % self.batch_size != 0:
-                raise ValueError('`epoch_size` must be multiples of '
-                                 '`batch_size`.')
-            if epoch_size <= 0:
-                raise ValueError('`epoch_size` must be positive.')
-        self._epoch_size = epoch_size
+        if batch_count is not None:
+            if batch_count <= 0:
+                raise ValueError('`batch_count` must be positive.')
+        self._batch_count = batch_count
 
         # the loop generator
-        if epoch_size is None:
+        if batch_count is None:
             def loop_generator():
                 while True:
                     yield
         else:
             if six.PY2:
                 def loop_generator():
-                    return xrange(epoch_size / self.batch_size)
+                    return xrange(batch_count)
             else:
                 def loop_generator():
-                    return range(epoch_size / self.batch_size)
+                    return range(batch_count)
         self._loop_generator = loop_generator
 
         # the batch array generator
@@ -260,8 +362,9 @@ class DataFSRandomFlow(_BaseDataFSFlow):
         self._make_batch_arrays = make_batch_arrays
 
     @property
-    def epoch_size(self):
-        return self._epoch_size
+    def batch_count(self):
+        """Get the number of mini-batches to obtain in an epoch."""
+        return self._batch_count
 
     def _minibatch_iterator(self):
         g = _BatchArrayGenerator(batch_size=self.batch_size,
