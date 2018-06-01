@@ -8,3 +8,6 @@ selenium >= 3.8.0
 sphinx >= 1.6.3
 ipython >= 5.5.0
 git+https://github.com/haowen-xu/tfsnippet.git
+
+# !!! DO NOT INCLUDE TENSORFLOW IN THIS FILE !!!
+# Installing tensorflow (no `-gpu`) will cause the gpu version not to work.

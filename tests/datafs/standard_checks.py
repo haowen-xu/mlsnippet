@@ -101,7 +101,7 @@ class StandardFSChecks(object):
                 self.assertEquals(0, close_counter[0])
             except AttributeError:
                 # Some python versions disallow us to modify `.close()`
-                # of a file object, ignore such errors.
+                # of a file object, ignore such errors, and skip the tests.
                 close_counter[0] = 2
         self.assertEquals(2, close_counter[0])
 
@@ -340,18 +340,18 @@ class StandardFSChecks(object):
                 ]
                 self.assertListEqual(
                     expected,
-                    list(fs.iter_files(meta_keys_iter()))
+                    sorted(fs.iter_files(meta_keys_iter()))
                 )
                 # empty meta keys
                 expected = [
                     (name, get_content(name))
                     for name in names
                 ]
-                self.assertListEqual(expected, list(fs.iter_files(())))
-                self.assertListEqual(expected, list(fs.iter_files(None)))
+                self.assertListEqual(expected, sorted(fs.iter_files(())))
+                self.assertListEqual(expected, sorted(fs.iter_files(None)))
             else:
                 with pytest.raises(UnsupportedOperation):
-                    _ = list(fs.iter_files(meta_keys_iter()))
+                    _ = sorted(fs.iter_files(meta_keys_iter()))
 
             # sample_files
             if capacity.can_random_sample() and capacity.can_read_meta():
