@@ -6,7 +6,7 @@ import unittest
 import pytest
 from mock import Mock
 
-from mltoolkit.datafs import ActiveFiles, iter_files
+from mltoolkit.datafs import ActiveFiles, iter_files, maybe_close
 from mltoolkit.utils import makedirs, TemporaryDirectory
 
 
@@ -88,6 +88,22 @@ class IterFilesTestCase(unittest.TestCase):
 
             self.assertListEqual(names, sorted(iter_files(tempdir)))
             self.assertListEqual(names, sorted(iter_files(tempdir + '/a/../')))
+
+
+class MaybeCloseTestCase(unittest.TestCase):
+
+    def test_maybe_close(self):
+        # test with close
+        f = Mock()
+        f.close = Mock(return_value=None)
+        with maybe_close(f) as f2:
+            self.assertIs(f, f2)
+        self.assertTrue(f.close.called)
+
+        # test without close
+        f = object()
+        with maybe_close(f) as f2:
+            self.assertIs(f, f2)
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ import zipfile
 
 from .base import *
 from .errors import UnsupportedOperation, InvalidOpenMode
-from .utils import ActiveFiles
+from .utils import ActiveFiles, maybe_close
 
 __all__ = ['TarArchiveFS', 'ZipArchiveFS']
 
@@ -85,13 +85,9 @@ class TarArchiveFS(_ArchiveFS):
         self.init()
         for mi in self._file_obj:
             if not mi.isdir():
-                f = self._file_obj.extractfile(mi)
-                try:
+                with maybe_close(self._file_obj.extractfile(mi)) as f:
                     cnt = f.read()
                     yield self._canonical_path(mi.name), cnt
-                finally:
-                    if hasattr(f, 'close'):
-                        f.close()
 
     def open(self, filename, mode):
         self.init()
@@ -147,13 +143,9 @@ class ZipArchiveFS(_ArchiveFS):
         self.init()
         for mi in self._file_obj.infolist():
             if not self._isdir(mi):
-                f = self._file_obj.open(mi)
-                try:
+                with maybe_close(self._file_obj.open(mi)) as f:
                     cnt = f.read()
                     yield self._canonical_path(mi.filename), cnt
-                finally:
-                    if hasattr(f, 'close'):
-                        f.close()
 
     def open(self, filename, mode):
         self.init()

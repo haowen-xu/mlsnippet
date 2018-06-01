@@ -4,6 +4,7 @@ import six
 
 from mltoolkit.utils import DocInherit, AutoInitAndCloseable
 from .errors import UnsupportedOperation, DataFileNotExist
+from .utils import maybe_close
 
 __all__ = [
     'DataFSCapacity',
@@ -389,7 +390,7 @@ class DataFS(AutoInitAndCloseable):
         Returns:
             bytes: The content of a file.
         """
-        with self.open(filename, 'r') as f:
+        with maybe_close(self.open(filename, 'r')) as f:
             return f.read()
 
     def put_data(self, filename, data):
@@ -405,10 +406,10 @@ class DataFS(AutoInitAndCloseable):
             UnsupportedOperation: If ``WRITE_DATA`` capacity is absent.
         """
         if isinstance(data, six.binary_type):
-            with self.open(filename, 'w') as f:
+            with maybe_close(self.open(filename, 'w')) as f:
                 f.write(data)
         elif hasattr(data, 'read'):
-            with self.open(filename, 'w') as f:
+            with maybe_close(self.open(filename, 'w')) as f:
                 while True:
                     buf = data.read(self._buffer_size)
                     if not buf:

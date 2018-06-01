@@ -1,10 +1,11 @@
 import os
 import sys
 import weakref
+from contextlib import contextmanager
 
 import six
 
-__all__ = ['ActiveFiles', 'iter_files']
+__all__ = ['ActiveFiles', 'iter_files', 'maybe_close']
 
 
 class ActiveFiles(object):
@@ -94,3 +95,22 @@ def iter_files(root_dir, sep='/'):
                 yield x
         else:
             yield name
+
+
+@contextmanager
+def maybe_close(obj):
+    """
+    Enter a context, and if `obj` has ``.close()`` method, close it
+    when exiting the context.
+
+    Args:
+        obj: The object maybe to close.
+
+    Yields:
+        The specified `obj`.
+    """
+    try:
+        yield obj
+    finally:
+        if hasattr(obj, 'close'):
+            obj.close()
