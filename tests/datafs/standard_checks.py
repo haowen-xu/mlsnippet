@@ -93,11 +93,16 @@ class StandardFSChecks(object):
                     return close_func(*args, **kwargs)
                 return inner
 
-            f1 = fs.open('a/1.txt', 'r')
-            f1.close = wrap_close(f1.close)
-            f2 = fs.open('a/2.htm', 'r')
-            f2.close = wrap_close(f2.close, throw_error=True)
-            self.assertEquals(0, close_counter[0])
+            try:
+                f1 = fs.open('a/1.txt', 'r')
+                f1.close = wrap_close(f1.close)
+                f2 = fs.open('a/2.htm', 'r')
+                f2.close = wrap_close(f2.close, throw_error=True)
+                self.assertEquals(0, close_counter[0])
+            except AttributeError:
+                # Some python versions disallow us to modify `.close()`
+                # of a file object, ignore such errors.
+                pass
         self.assertEquals(2, close_counter[0])
 
     def check_read(self, capacity):
@@ -141,7 +146,7 @@ class StandardFSChecks(object):
             # iter and sample files
             self.assertListEqual(
                 [(n, to_bytes(n) + b' content') for n in names],
-                list(fs.iter_files())
+                sorted(fs.iter_files())
             )
 
             if capacity.can_random_sample():
