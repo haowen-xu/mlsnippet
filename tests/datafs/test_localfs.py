@@ -2,6 +2,7 @@ import os
 import unittest
 from contextlib import contextmanager
 
+import pytest
 import six
 
 from mltoolkit.utils import TemporaryDirectory, makedirs
@@ -35,6 +36,16 @@ class LocalFSTestCase(unittest.TestCase, StandardFSChecks):
 
     def test_standard(self):
         self.run_standard_checks(DataFSCapacity.READ_WRITE_DATA)
+
+    def test_errors(self):
+        with pytest.raises(IOError, match='Not a directory'):
+            _ = LocalFS('/this/path/cannot/be/a/directory')
+        with TemporaryDirectory() as tempdir:
+            f_path = os.path.join(tempdir, '1.dat')
+            with open(f_path, 'wb') as f:
+                f.write(b'')
+            with pytest.raises(IOError, match='Not a directory'):
+                _ = LocalFS(f_path)
 
 
 if __name__ == '__main__':
