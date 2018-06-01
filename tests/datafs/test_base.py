@@ -10,28 +10,9 @@ import pytest
 from mock import Mock
 
 from mltoolkit.datafs import *
+from mltoolkit.datafs import UnsupportedOperation, DataFileNotExist
 from mltoolkit.utils import TemporaryDirectory, makedirs
 from .standard_checks import StandardFSChecks, LocalFS
-
-
-class ExceptionsTestCase(unittest.TestCase):
-
-    def test_DataFileNotExist(self):
-        e = DataFileNotExist('data file')
-        self.assertEquals('data file', e.filename)
-        self.assertEquals('Data file not exist: \'data file\'', str(e))
-
-    def test_MetaKeyNotExist(self):
-        e = MetaKeyNotExist('data file', 'meta key')
-        self.assertEquals('data file', e.filename)
-        self.assertEquals('meta key', e.meta_key)
-        self.assertEquals('In file \'data file\': '
-                          'meta key not exist: \'meta key\'', str(e))
-
-    def test_InvalidOpenMode(self):
-        e = InvalidOpenMode('invalid mode')
-        self.assertEquals('invalid mode', e.mode)
-        self.assertEquals('Invalid open mode: \'invalid mode\'', str(e))
 
 
 class DataFSCapacityTestCase(unittest.TestCase):
@@ -83,19 +64,24 @@ class DataFSCapacityTestCase(unittest.TestCase):
         c = DataFSCapacity(DataFSCapacity.READ_WRITE_META)
         self.assertEquals('DataFSCapacity(read_meta,write_meta)', repr(c))
 
+    def test_construction_from_DataFSCapacity(self):
+        c = DataFSCapacity(DataFSCapacity.ALL)
+        c2 = DataFSCapacity(c)
+        self.assertIsInstance(c2, DataFSCapacity)
+        self.assertEquals(c, c2)
+
 
 class DataFSTestCase(unittest.TestCase):
 
     def test_props(self):
-        capacity = DataFSCapacity(DataFSCapacity.ALL)
-        self.assertFalse(DataFS(capacity).strict)
-        self.assertTrue(DataFS(capacity, strict=True).strict)
+        self.assertFalse(DataFS(DataFSCapacity()).strict)
+        self.assertTrue(DataFS(DataFSCapacity(), strict=True).strict)
 
     def test_as_flow(self):
         class DummyFS(DataFS):
             def __init__(self):
                 super(DummyFS, self).__init__(
-                    capacity=DataFSCapacity(DataFSCapacity.ALL)
+                    capacity=DataFSCapacity.ALL
                 )
                 self.clone = Mock(return_value=cloned)
 
@@ -166,7 +152,8 @@ class ExtendedLocalFS(LocalFS):
     def __init__(self, *args, **kwargs):
         super(ExtendedLocalFS, self).__init__(*args, **kwargs)
         self._file_meta_dict = defaultdict(lambda: {})
-        self._capacity = DataFSCapacity(DataFSCapacity.ALL)
+        self._capacity = DataFSCapacity(
+            DataFSCapacity.ALL & ~DataFSCapacity.QUICK_COUNT)
 
     def clone(self):
         return ExtendedLocalFS(self.root_dir, strict=self.strict)
@@ -235,7 +222,8 @@ class ExtendedLocalFSTestCase(unittest.TestCase, StandardFSChecks):
                 yield fs
 
     def test_standard(self):
-        self.run_standard_checks(DataFSCapacity.ALL)
+        self.run_standard_checks(
+            DataFSCapacity.ALL & ~DataFSCapacity.QUICK_COUNT)
 
 
 if __name__ == '__main__':

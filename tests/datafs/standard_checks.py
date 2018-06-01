@@ -3,8 +3,10 @@ from io import BytesIO
 
 import pytest
 import six
+from mock import Mock
 
 from mltoolkit.datafs import *
+from mltoolkit.datafs import UnsupportedOperation, DataFileNotExist
 
 
 class StandardFSChecks(object):
@@ -13,22 +15,7 @@ class StandardFSChecks(object):
 
     To actually implement tests for a particular :class:`DataFS` subclass,
     inherit both the :class:`unittest.TestCase` and this class, and provide
-    necessary utilities to support the checks, for example::
-
-        class LocalFSTestCase(unittest.TestCase, StandardFSChecks):
-
-            def get_snapshot(self, fs):
-                # implement the method to take snapshot from a local `fs`
-
-            @contextmanager
-            def temporary_fs(self, snapshot=None):
-                with TemporaryDirectory() as tempdir:
-                    # populate the fs
-                    yield LocalFS(tempdir)
-
-            def test_standard(self):
-                self.run_standard_checks(
-                    DataFSCapacity.READ_WRITE_DATA)
+    necessary utilities to support the checks.
     """
 
     def get_snapshot(self, fs):
@@ -58,24 +45,14 @@ class StandardFSChecks(object):
         """
         raise NotImplementedError()
 
-    def assert_snapshot_equals(self, expected, actual):
-        """
-        Assert the two snapshots are equal.
-
-        Args:
-            expected: The expected fs snapshot.
-            actual: The actual fs snapshot.
-        """
-        self.assertDictEqual(expected, actual)
-
-    def run_standard_checks(self, *capacity):
+    def run_standard_checks(self, capacity):
         """
         Run all the standard :class:`DataFS` tests.
 
         Args:
             *capacity: The expected capacity flags.
         """
-        capacity = DataFSCapacity(*capacity)
+        capacity = DataFSCapacity(capacity)
         self.check_props_and_basic_methods(capacity)
         self.check_auto_close_all(capacity)
         self.check_read(capacity)
@@ -135,8 +112,16 @@ class StandardFSChecks(object):
         with self.temporary_fs(snapshot) as fs:
             self.assertDictEqual(snapshot, self.get_snapshot(fs))
 
-            # count, iter, list and sample names
+            # count
             self.assertEquals(5, fs.count())
+            if capacity.can_quick_count():
+                old_count = fs.count
+                fs.count = Mock(wraps=old_count)
+                self.assertEquals(5, fs.count())
+                self.assertFalse(fs.count.called)
+                fs.count = old_count
+
+            # iter, list and sample names
             self.assertListEqual(names, sorted(fs.iter_names()))
             self.assertIsInstance(fs.list_names(), list)
             self.assertListEqual(names, sorted(fs.list_names()))

@@ -2,8 +2,9 @@ import os
 import tarfile
 import zipfile
 
-from .utils import ActiveFiles
 from .base import *
+from .errors import UnsupportedOperation, InvalidOpenMode
+from .utils import ActiveFiles
 
 __all__ = ['TarArchiveFS', 'ZipArchiveFS']
 
@@ -13,7 +14,7 @@ class _ArchiveFS(DataFS):
 
     def __init__(self, archive_file, strict):
         super(_ArchiveFS, self).__init__(
-            capacity=DataFSCapacity(DataFSCapacity.READ_DATA),
+            capacity=DataFSCapacity.READ_DATA,
             strict=strict
         )
 

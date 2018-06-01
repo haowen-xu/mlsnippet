@@ -242,7 +242,7 @@ class MagicHTML(Element):
         Args:
             obj: The object to be wrapped.
             cacheable (bool): Whether or not to cache the output of `__html__`
-                method?  (default :obj:`False)
+                method?  (default :obj:`False`)
         """
         self._obj = obj
         self._cacheable = cacheable

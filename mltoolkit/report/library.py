@@ -22,7 +22,7 @@ class Library(object):
         code of the stylesheets, including the "<style>" or "<link>" tag.
         For example:
 
-        .. code-block::
+        .. code-block:: python
 
             class Bootstrap(Library):
 
@@ -47,7 +47,7 @@ class Library(object):
         Derived classes should override this method to provide the source
         code of the scripts, including the "<script>" tag.  For example:
 
-        .. code-block::
+        .. code-block:: python
 
             class JQuery(Library):
 
@@ -72,7 +72,7 @@ class SingletonLibrary(Library):
     For example, :class:`JQuery` is a subclass of :class:`SingletonLibrary`,
     such that the following assertion holds:
 
-    .. code-block::
+    .. code-block:: python
 
         assert(JQuery() is JQuery())
     """

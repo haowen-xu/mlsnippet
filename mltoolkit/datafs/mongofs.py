@@ -3,7 +3,8 @@ from pymongo import MongoClient, CursorType
 from pymongo.database import Database
 from pymongo.collection import Collection
 
-from .base import *
+from .base import DataFS, DataFSCapacity
+from .errors import DataFileNotExist, InvalidOpenMode, MetaKeyNotExist
 from .utils import ActiveFiles
 
 __all__ = ['MongoFS']
@@ -32,7 +33,7 @@ class MongoFS(DataFS):
                 strict mode?  (default :obj:`False`)
         """
         super(MongoFS, self).__init__(
-            capacity=DataFSCapacity(DataFSCapacity.ALL),
+            capacity=DataFSCapacity.ALL,
             strict=strict
         )
 

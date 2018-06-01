@@ -2,7 +2,8 @@ import os
 
 from mltoolkit.utils import makedirs
 from .utils import ActiveFiles, iter_files
-from .base import *
+from .base import DataFS, DataFSCapacity
+from .errors import InvalidOpenMode, UnsupportedOperation
 
 __all__ = ['LocalFS']
 
@@ -20,10 +21,7 @@ class LocalFS(DataFS):
                 strict mode?  (default :obj:`False`)
         """
         super(LocalFS, self).__init__(
-            capacity=DataFSCapacity(
-                DataFSCapacity.READ_DATA,
-                DataFSCapacity.WRITE_DATA,
-            ),
+            capacity=DataFSCapacity.READ_WRITE_DATA,
             strict=strict
         )
 

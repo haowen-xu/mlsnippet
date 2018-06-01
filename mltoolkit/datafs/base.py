@@ -5,71 +5,12 @@ from functools import reduce
 import six
 
 from mltoolkit.utils import DocInherit, AutoInitAndCloseable
+from .errors import UnsupportedOperation, DataFileNotExist
 
 __all__ = [
-    'UnsupportedOperation',
-    'InvalidOpenMode',
-    'DataFileNotExist',
-    'MetaKeyNotExist',
     'DataFSCapacity',
     'DataFS',
 ]
-
-
-class UnsupportedOperation(Exception):
-    """
-    Class to indicate that a requested operation is not supported by the
-    specific :class:`DataFS` subclass.
-    """
-
-
-class InvalidOpenMode(UnsupportedOperation, ValueError):
-    """
-    Class to indicate that the specified open mode is not supported.
-    """
-
-    def __init__(self, mode):
-        super(InvalidOpenMode, self).__init__(mode)
-
-    @property
-    def mode(self):
-        return self.args[0]
-
-    def __str__(self):
-        return 'Invalid open mode: {!r}'.format(self.mode)
-
-
-class DataFileNotExist(KeyError, IOError):
-    """Class to indicate a requested data file does not exist."""
-
-    def __init__(self, filename):
-        super(DataFileNotExist, self).__init__(filename)
-
-    @property
-    def filename(self):
-        return self.args[0]
-
-    def __str__(self):
-        return 'Data file not exist: {!r}'.format(self.filename)
-
-
-class MetaKeyNotExist(KeyError):
-    """Class to indicate a requested meta key does not exist."""
-
-    def __init__(self, filename, meta_key):
-        super(MetaKeyNotExist, self).__init__(filename, meta_key)
-
-    @property
-    def filename(self):
-        return self.args[0]
-
-    @property
-    def meta_key(self):
-        return self.args[1]
-
-    def __str__(self):
-        return 'In file {!r}: meta key not exist: {!r}'. \
-            format(self.filename, self.meta_key)
 
 
 class DataFSCapacity(object):
@@ -115,14 +56,16 @@ class DataFSCapacity(object):
            QUICK_COUNT | RANDOM_SAMPLE)
     """All capacities are supported."""
 
-    def __init__(self, *flags):
+    def __init__(self, mode=0):
         """
         Construct a new :class:`DataFSCapacity`.
 
         Args:
-            *flags: The supported capacity flags, one after another.
+            mode (int): The mode number of this capacity flag.
         """
-        self._mode = reduce(operator.or_, flags, 0)
+        if isinstance(mode, DataFSCapacity):
+            mode = mode._mode
+        self._mode = int(mode)
 
     def can_read_data(self):
         return (self._mode & self.READ_DATA) != 0
@@ -186,7 +129,8 @@ class DataFS(AutoInitAndCloseable):
         Initialize the base :class:`DataFS` class.
 
         Args:
-            capacity (DataFSCapacity): Specify the capacity of the subclass.
+            capacity (int or DataFSCapacity): Specify the capacity of the
+                derived :class:`DataFS`.
             strict (bool): Whether or not this :class:`DataFS` works in
                 strict mode?  (default :obj:`False`)
 
@@ -195,7 +139,7 @@ class DataFS(AutoInitAndCloseable):
                 1. Accessing the value of a non-exist meta key will cause
                    a :class:`MetaKeyNotExist`, instead of getting :obj:`None`.
         """
-        self._capacity = capacity
+        self._capacity = DataFSCapacity(capacity)
         self._strict = strict
 
     @property
