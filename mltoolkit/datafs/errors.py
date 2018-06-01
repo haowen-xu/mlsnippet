@@ -15,7 +15,7 @@ class UnsupportedOperation(DataFSError):
     """
 
 
-class InvalidOpenMode(UnsupportedOperation, ValueError):
+class InvalidOpenMode(UnsupportedOperation):
     """
     Class to indicate that the specified open mode is not supported.
     """
@@ -31,7 +31,7 @@ class InvalidOpenMode(UnsupportedOperation, ValueError):
         return 'Invalid open mode: {!r}'.format(self.mode)
 
 
-class DataFileNotExist(DataFSError, KeyError, IOError):
+class DataFileNotExist(DataFSError):
     """Class to indicate a requested data file does not exist."""
 
     def __init__(self, filename):
@@ -45,7 +45,7 @@ class DataFileNotExist(DataFSError, KeyError, IOError):
         return 'Data file not exist: {!r}'.format(self.filename)
 
 
-class MetaKeyNotExist(DataFSError, KeyError):
+class MetaKeyNotExist(DataFSError):
     """Class to indicate a requested meta key does not exist."""
 
     def __init__(self, filename, meta_key):

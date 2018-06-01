@@ -170,6 +170,10 @@ class ExtendedLocalFS(LocalFS):
         if not self.isfile(filename):
             raise DataFileNotExist(filename)
         meta_dict = self._file_meta_dict[filename]
+        if self.strict:
+            for k in meta_keys:
+                if k not in meta_dict:
+                    raise MetaKeyNotExist(filename, k)
         return tuple(meta_dict.get(k, None) for k in meta_keys)
 
     def put_meta(self, filename, meta_dict=None, **meta_dict_kwargs):

@@ -372,6 +372,7 @@ class DataFS(AutoInitAndCloseable):
         Raises:
             UnsupportedOperation: If ``meta_keys`` is specified, but
                 ``READ_META`` capacity is absent.
+            DataFileNotExist: If `filename` does not exist.
         """
         if meta_keys is not None:
             meta_keys = tuple(meta_keys)
@@ -389,6 +390,7 @@ class DataFS(AutoInitAndCloseable):
 
         Returns:
             bytes: The content of a file.
+            DataFileNotExist: If `filename` does not exist.
         """
         with maybe_close(self.open(filename, 'r')) as f:
             return f.read()
@@ -435,6 +437,7 @@ class DataFS(AutoInitAndCloseable):
         Raises:
             InvalidOpenMode: If the specified mode is not supported,
                 e.g., ``mode == 'w'`` but ``WRITE_DATA`` capacity is absent.
+            DataFileNotExist: If ``mode == 'r'`` but `filename` does not exist.
         """
         raise NotImplementedError()
 

@@ -3,7 +3,7 @@ import tarfile
 import zipfile
 
 from .base import *
-from .errors import UnsupportedOperation, InvalidOpenMode
+from .errors import UnsupportedOperation, InvalidOpenMode, DataFileNotExist
 from .utils import ActiveFiles, maybe_close
 
 __all__ = ['TarArchiveFS', 'ZipArchiveFS']
@@ -91,11 +91,14 @@ class TarArchiveFS(_ArchiveFS):
 
     def open(self, filename, mode):
         self.init()
-        if mode == 'r':
-            mi = self._file_obj.getmember(filename)
-            return self._active_files.add(self._file_obj.extractfile(mi))
-        else:
+        if mode != 'r':
             raise InvalidOpenMode(mode)
+        try:
+            mi = self._file_obj.getmember(filename)
+        except KeyError:
+            raise DataFileNotExist(filename)
+        else:
+            return self._active_files.add(self._file_obj.extractfile(mi))
 
     def isfile(self, filename):
         try:
@@ -151,7 +154,11 @@ class ZipArchiveFS(_ArchiveFS):
         self.init()
         if mode != 'r':
             raise InvalidOpenMode(mode)
-        return self._active_files.add(self._file_obj.open(filename, mode=mode))
+        try:
+            return self._active_files.add(
+                self._file_obj.open(filename, mode=mode))
+        except KeyError:
+            raise DataFileNotExist(filename)
 
     def isfile(self, filename):
         try:

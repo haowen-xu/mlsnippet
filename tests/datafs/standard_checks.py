@@ -391,13 +391,16 @@ class StandardFSChecks(object):
                     _ = fs.sample_files(len(names), None)
 
         # test strict read meta
-        with self.temporary_fs(snapshot, strict=True) as fs:
-            self.assertTrue(fs.strict)
-            for name in names:
-                with pytest.raises(MetaKeyNotExist):
-                    _ = fs.get_meta(name, meta_keys_iter())
-                self.assertEquals(
-                    (name + ' z', 1), fs.get_meta(name, ['z', name[0]]))
+        if capacity.can_read_meta():
+            with self.temporary_fs(snapshot, strict=True) as fs:
+                self.assertTrue(fs.strict)
+                for name in names:
+                    with pytest.raises(MetaKeyNotExist):
+                        _ = fs.get_meta(name, meta_keys_iter())
+                    self.assertEquals(
+                        (name + ' z', 1),
+                        fs.get_meta(name, ['z', name[0]])
+                    )
 
     def check_meta_write(self, capacity):
         names = ['a/1.txt', 'b/2.rst', 'c']

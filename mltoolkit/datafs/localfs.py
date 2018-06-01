@@ -3,7 +3,7 @@ import os
 from mltoolkit.utils import makedirs
 from .utils import ActiveFiles, iter_files
 from .base import DataFS, DataFSCapacity
-from .errors import InvalidOpenMode, UnsupportedOperation
+from .errors import InvalidOpenMode, UnsupportedOperation, DataFileNotExist
 
 __all__ = ['LocalFS']
 
@@ -56,6 +56,8 @@ class LocalFS(DataFS):
         self.init()
         file_path = os.path.join(self.root_dir, filename)
         if mode == 'r':
+            if not os.path.exists(file_path):
+                raise DataFileNotExist(file_path)
             return self._active_files.add(open(file_path, 'rb'))
         elif mode == 'w':
             parent_dir = os.path.split(file_path)[0]
