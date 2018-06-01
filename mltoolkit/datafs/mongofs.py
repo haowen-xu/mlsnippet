@@ -1,3 +1,4 @@
+import six
 from gridfs import GridFS, GridFSBucket
 from pymongo import MongoClient, CursorType
 from pymongo.database import Database
@@ -223,10 +224,14 @@ class MongoFS(DataFS):
             return data
 
     def put_data(self, filename, data):
-        f = self.collection.files.find_one({'filename': filename}, {'_id': 1})
-        if f is not None:
-            self.gridfs.delete(f['_id'])
-        self.gridfs.put(data, filename=filename)
+        if isinstance(data, six.binary_type) or hasattr(data, 'read'):
+            f = self.collection.files.find_one(
+                {'filename': filename}, {'_id': 1})
+            if f is not None:
+                self.gridfs.delete(f['_id'])
+            self.gridfs.put(data, filename=filename)
+        else:
+            raise TypeError('`data` must be bytes or a file-like object.')
 
     def open(self, filename, mode):
         f = self.collection.files.find_one({'filename': filename}, {'_id': 1})
@@ -260,7 +265,7 @@ class MongoFS(DataFS):
 
     def get_meta(self, filename, meta_keys):
         meta_keys = tuple(meta_keys or ())
-        project = self._make_query_project(meta_keys, _id=0, filename=0)
+        project = self._make_query_project(meta_keys, _id=0)
         r = self.collection.files.find_one({'filename': filename}, project)
         if r is None:
             raise DataFileNotExist(filename)
@@ -269,7 +274,7 @@ class MongoFS(DataFS):
     def batch_get_meta(self, filenames, meta_keys):
         filenames = tuple(filenames)
         meta_keys = tuple(meta_keys or ())
-        project = self._make_query_project(meta_keys, _id=0, filename=1)
+        project = self._make_query_project(meta_keys, _id=0)
         ret = [None] * len(filenames)
         name_to_id = {filename: i for i, filename in enumerate(filenames)}
         for r in self.collection.files.find({'filename': {'$in': filenames}},

@@ -119,11 +119,11 @@ class StandardFSChecks(object):
             # count
             self.assertEquals(5, fs.count())
             if capacity.can_quick_count():
-                old_count = fs.count
-                fs.count = Mock(wraps=old_count)
+                old_iter_names = fs.iter_names
+                fs.iter_names = Mock(wraps=old_iter_names)
                 self.assertEquals(5, fs.count())
-                self.assertFalse(fs.count.called)
-                fs.count = old_count
+                self.assertFalse(fs.iter_names.called)
+                fs.iter_names = old_iter_names
 
             # iter, list and sample names
             self.assertListEqual(names, sorted(fs.iter_names()))
@@ -167,6 +167,11 @@ class StandardFSChecks(object):
                 self.assertEquals(get_content(n), fs.get_data(n))
                 with maybe_close(fs.open(n, 'r')) as f:
                     self.assertEquals(get_content(n), f.read())
+                with pytest.raises(DataFileNotExist):
+                    _ = fs.retrieve(n + '.invalid')
+                with pytest.raises(DataFileNotExist):
+                    with maybe_close(fs.open(n + '.invalid', 'r')):
+                        pass
 
             # isfile, batch_isfile
             for n in names:
@@ -198,6 +203,7 @@ class StandardFSChecks(object):
             self.assertDictEqual({}, self.get_snapshot(fs))
 
             # put_data
+            fs.put_data('a/1.txt', b'to be overwritten')
             fs.put_data('a/1.txt', b'a/1.txt content')
             fs.put_data('b/2.txt', BytesIO(b'b/2.txt content'))
             with pytest.raises(TypeError, match='`data` must be bytes or a '
@@ -208,6 +214,8 @@ class StandardFSChecks(object):
                 fs.put_data('err2.txt', object())
 
             # open
+            with maybe_close(fs.open('c/3.txt', 'w')) as f:
+                f.write(b'to be overwritten')
             with maybe_close(fs.open('c/3.txt', 'w')) as f:
                 f.write(b'c/3.txt content')
             with pytest.raises(UnsupportedOperation,
@@ -381,6 +389,15 @@ class StandardFSChecks(object):
                     _ = fs.sample_files(len(names), meta_keys_iter())
                     _ = fs.sample_files(len(names), ())
                     _ = fs.sample_files(len(names), None)
+
+        # test strict read meta
+        with self.temporary_fs(snapshot, strict=True) as fs:
+            self.assertTrue(fs.strict)
+            for name in names:
+                with pytest.raises(MetaKeyNotExist):
+                    _ = fs.get_meta(name, meta_keys_iter())
+                self.assertEquals(
+                    (name + ' z', 1), fs.get_meta(name, ['z', name[0]]))
 
     def check_meta_write(self, capacity):
         names = ['a/1.txt', 'b/2.rst', 'c']
