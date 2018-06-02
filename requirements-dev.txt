@@ -1,14 +1,13 @@
-backports.tempfile >= 1.0 ; python_version < '3.2'
-jinja2 >= 2.9.6
-matplotlib >= 2.0.0
-numpy >= 1.12.1
-pandas >= 0.20.3
-pathlib2 >= 2.3.0 ; python_version < '3.5'
-six >= 1.11.0
+-r requirements.txt
 
 coverage >= 4.3.4
 mock >= 2.0.0
 Pillow >= 5.0.0
 pytest >= 3.0
 selenium >= 3.8.0
+sphinx >= 1.6.3
 ipython >= 5.5.0
+git+https://github.com/haowen-xu/tfsnippet.git
+
+# !!! DO NOT INCLUDE TENSORFLOW IN THIS FILE !!!
+# Installing tensorflow (no `-gpu`) will cause the gpu version not to work.
