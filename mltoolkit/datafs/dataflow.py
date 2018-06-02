@@ -18,7 +18,7 @@ class _BaseDataFSFlow(DataFlow, AutoInitAndCloseable):
     Base class for all :class:`DataFS` derived :class:`DataFlow` subclasses.
     """
 
-    def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
+    def __init__(self, fs, batch_size, with_names=True, meta_keys=None,
                  skip_incomplete=False):
         """
         Initialize all internal states of the :class:`_BaseDataFSFlow`.
@@ -153,7 +153,7 @@ class DataFSForwardFlow(_BaseDataFSFlow):
     in a forward-only fashion (data are obtained by :meth:`iter_files`).
     """
 
-    def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
+    def __init__(self, fs, batch_size, with_names=True, meta_keys=None,
                  skip_incomplete=False):
         """
         Construct a new :class:`DataFSForwardFlow`.
@@ -196,7 +196,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
     according to given names (data are obtaining by :meth:`retrieve`).
     """
 
-    def __init__(self, fs, batch_size, names, with_names=False, meta_keys=None,
+    def __init__(self, fs, batch_size, names, with_names=True, meta_keys=None,
                  shuffle=False, skip_incomplete=False):
         """
         Construct a new :class:`DataFSIndexedFlow`.
@@ -204,7 +204,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
         Args:
             fs (DataFS): The data fs instance, where to read data.
             batch_size (int): Size of each mini-batch.
-            names (list[str]): The names of files to retrieve.
+            names (list[str] or np.ndarray[str]): The names to retrieve.
             with_names (bool): Whether or not to include the file names
                 in mini-batches? (default :obj:`True`)
             meta_keys (None or Iterable[str]): The keys of the meta data
@@ -244,7 +244,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
         """
         return self._is_shuffled
 
-    def __shuffled_indices_iterator(self):
+    def _shuffled_indices_iterator(self):
         # reuse indices
         if self._cached_indices is None:
             indices_dtype = (
@@ -263,7 +263,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
                 skip_incomplete=self.skip_incomplete):
             yield indices[s]
 
-    def __normal_indices_iterator(self):
+    def _normal_indices_iterator(self):
         return minibatch_slices_iterator(
             length=len(self.names),
             batch_size=self.batch_size,
@@ -273,32 +273,24 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
     def _minibatch_iterator(self):
         # iterate through mini-batches
         if self.is_shuffled:
-            indices_iter = self.__shuffled_indices_iterator()
+            indices_iter = self._shuffled_indices_iterator()
         else:
-            indices_iter = self.__normal_indices_iterator()
+            indices_iter = self._normal_indices_iterator()
 
         # for gathering batch arrays
         g = _BatchArrayGenerator(
             self.batch_size, self.with_names, self.meta_keys)
 
         # produce the mini-batches
-        if self.meta_keys:
-            for s in indices_iter:
-                s_names = self.names[s]
-                s_data = [self.fs.retrieve(name) for name in s_names]
-                s_meta = self.fs.batch_get_meta(s_names, self.meta_keys)
-                for n, d, m in zip(s_names, s_data, s_meta):
-                    g.add(n, d, m)
-                yield g.to_arrays()
-                g.clear_all()
-        else:
-            for s in indices_iter:
-                s_names = self.names[s]
-                s_data = [self.fs.retrieve(name) for name in s_names]
-                for n, d in zip(s_names, s_data):
-                    g.add(n, d)
-                yield g.to_arrays()
-                g.clear_all()
+        meta_keys = tuple(self.meta_keys or ())
+        for s in indices_iter:
+            s_names = self.names[s]
+            s_data = [self.fs.retrieve(name, meta_keys=meta_keys)
+                      for name in s_names]
+            for n, d in zip(s_names, s_data):
+                g.add(n, d[0], d[1:])
+            yield g.to_arrays()
+            g.clear_all()
 
 
 class DataFSRandomFlow(_BaseDataFSFlow):
@@ -307,7 +299,7 @@ class DataFSRandomFlow(_BaseDataFSFlow):
     from the :class:`DataFS`.
     """
 
-    def __init__(self, fs, batch_size, with_names=False, meta_keys=None,
+    def __init__(self, fs, batch_size, with_names=True, meta_keys=None,
                  batch_count=None, skip_incomplete=False):
         """
         Construct a new :class:`DataFSRandomFlow`.
@@ -349,18 +341,6 @@ class DataFSRandomFlow(_BaseDataFSFlow):
                     return range(batch_count)
         self._loop_generator = loop_generator
 
-        # the batch array generator
-        if self.with_names:
-            def make_batch_arrays(batch):
-                return ((np.asarray(batch[0], dtype=str),
-                         np.asarray(batch[1], dtype=six.binary_type),) +
-                        tuple(np.asarray(buf) for buf in batch[2:]))
-        else:
-            def make_batch_arrays(batch):
-                return ((np.asarray(batch[1], dtype=six.binary_type),) +
-                        tuple(np.asarray(buf) for buf in batch[2:]))
-        self._make_batch_arrays = make_batch_arrays
-
     @property
     def batch_count(self):
         """Get the number of mini-batches to obtain in an epoch."""
@@ -377,4 +357,4 @@ class DataFSRandomFlow(_BaseDataFSFlow):
                     g.add(b[0], b[1], b[2:])
                 if g.full_batch or not self.skip_incomplete:
                     yield g.to_arrays()
-                    g.clear_all()
+                g.clear_all()

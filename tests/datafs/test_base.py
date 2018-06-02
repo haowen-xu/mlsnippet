@@ -4,6 +4,7 @@ import unittest
 from collections import defaultdict
 from contextlib import contextmanager
 
+import numpy as np
 import six
 import pytest
 from mock import Mock
@@ -12,6 +13,7 @@ from mltoolkit.datafs import *
 from mltoolkit.datafs import UnsupportedOperation, DataFileNotExist
 from mltoolkit.utils import TemporaryDirectory, makedirs
 from .standard_checks import StandardFSChecks, LocalFS
+from .test_dataflow import _DummyDataFS
 
 
 class DataFSCapacityTestCase(unittest.TestCase):
@@ -76,70 +78,115 @@ class DataFSTestCase(unittest.TestCase):
         self.assertFalse(DataFS(DataFSCapacity()).strict)
         self.assertTrue(DataFS(DataFSCapacity(), strict=True).strict)
 
-    # def test_as_flow(self):
-    #     class DummyFS(DataFS):
-    #         def __init__(self):
-    #             super(DummyFS, self).__init__(
-    #                 capacity=DataFSCapacity.ALL
-    #             )
-    #             self.clone = Mock(return_value=cloned)
-    #
-    #         @property
-    #         def capacity(self):
-    #             return self._capacity
-    #
-    #     cloned = object()
-    #     fs = DummyFS()
-    #
-    #     # as_flow with default args
-    #     flow = fs.as_flow(123)
-    #     self.assertIsInstance(flow, DataFSFlow)
-    #     self.assertIs(cloned, flow.fs)
-    #     self.assertEquals(123, flow.batch_size)
-    #     self.assertTrue(flow.with_names)
-    #     self.assertIsNone(flow.meta_keys)
-    #     self.assertFalse(flow.is_shuffled)
-    #     self.assertFalse(flow.skip_incomplete)
-    #     self.assertIsNone(flow.names_pattern)
-    #
-    #     # as_flow with customized args
-    #     flow = fs.as_flow(123, with_names=False, meta_keys=['a', 'b'],
-    #                       shuffle=True, skip_incomplete=True,
-    #                       names_pattern='.*\.jpg$')
-    #     self.assertIsInstance(flow, DataFSFlow)
-    #     self.assertIs(cloned, flow.fs)
-    #     self.assertEquals(123, flow.batch_size)
-    #     self.assertFalse(flow.with_names)
-    #     self.assertEquals(('a', 'b'), flow.meta_keys)
-    #     self.assertTrue(flow.is_shuffled)
-    #     self.assertTrue(flow.skip_incomplete)
-    #     self.assertTrue(hasattr(flow.names_pattern, 'match'))
-    #     self.assertEquals('.*\.jpg$', flow.names_pattern.pattern)
-    #
-    #     # as_random_flow with default args
-    #     flow = fs.as_random_flow(123)
-    #     self.assertIsInstance(flow, DataFSRandomFlow)
-    #     self.assertIs(cloned, flow.fs)
-    #     self.assertEquals(123, flow.batch_size)
-    #     self.assertTrue(flow.with_names)
-    #     self.assertIsNone(flow.meta_keys)
-    #     self.assertFalse(flow.skip_incomplete)
-    #
-    #     # as_random_flow with customized args
-    #     flow = fs.as_random_flow(123, with_names=False, meta_keys=['a', 'b'],
-    #                              skip_incomplete=True)
-    #     self.assertIsInstance(flow, DataFSRandomFlow)
-    #     self.assertIs(cloned, flow.fs)
-    #     self.assertEquals(123, flow.batch_size)
-    #     self.assertFalse(flow.with_names)
-    #     self.assertEquals(('a', 'b'), flow.meta_keys)
-    #     self.assertTrue(flow.skip_incomplete)
-    #
-    #     # as_random_flow with capacity check
-    #     fs._capacity = DataFSCapacity(
-    #         DataFSCapacity.ALL & ~DataFSCapacity.RANDOM_SAMPLE)
-    #     with pytest.raises(UnsupportedOperation):
-    #         _ = fs.as_random_flow(123)
+    def test_as_flow(self):
+        fs = _DummyDataFS()
+        fs.clone = Mock(wraps=fs.clone)
+
+        # as_flow with default args, returns DataFSForwardFlow
+        flow = fs.as_flow(123)
+        self.assertIsInstance(flow, DataFSForwardFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(1, fs.clone.call_count)
+        self.assertEquals(123, flow.batch_size)
+        self.assertTrue(flow.with_names)
+        self.assertIsNone(flow.meta_keys)
+        self.assertFalse(flow.skip_incomplete)
+
+        # as_flow with custom args, still DataFSForwardFlow
+        flow = fs.as_flow(123, with_names=False, meta_keys=iter('abcd'),
+                          skip_incomplete=True)
+        self.assertIsInstance(flow, DataFSForwardFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(2, fs.clone.call_count)
+        self.assertEquals(123, flow.batch_size)
+        self.assertFalse(flow.with_names)
+        self.assertEquals(('a', 'b', 'c', 'd'), flow.meta_keys)
+        self.assertTrue(flow.skip_incomplete)
+
+        # as_flow with custom args, DataFSIndexedFlow
+        flow = fs.as_flow(123, with_names=False, meta_keys=iter('abcd'),
+                          shuffle=True, skip_incomplete=True)
+        self.assertIsInstance(flow, DataFSIndexedFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(3, fs.clone.call_count)
+        self.assertEquals(123, flow.batch_size)
+        self.assertFalse(flow.with_names)
+        self.assertTrue(flow.is_shuffled)
+        np.testing.assert_equal(fs.list_names(), flow.names)
+        self.assertEquals(('a', 'b', 'c', 'd'), flow.meta_keys)
+        self.assertTrue(flow.skip_incomplete)
+
+        # as_flow with custom args, DataFSIndexedFlow
+        flow = fs.as_flow(123, with_names=False, meta_keys=iter('abcd'),
+                          names_pattern='^[034589]$', skip_incomplete=True)
+        self.assertIsInstance(flow, DataFSIndexedFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(4, fs.clone.call_count)
+        self.assertEquals(123, flow.batch_size)
+        self.assertFalse(flow.with_names)
+        self.assertFalse(flow.is_shuffled)
+        np.testing.assert_equal(list('034589'), flow.names)
+        self.assertEquals(('a', 'b', 'c', 'd'), flow.meta_keys)
+        self.assertTrue(flow.skip_incomplete)
+
+    def test_sub_flow(self):
+        fs = _DummyDataFS()
+        fs.clone = Mock(wraps=fs.clone)
+        names = list('034589')
+
+        # sub_flow with default args
+        flow = fs.sub_flow(123, names)
+        self.assertIsInstance(flow, DataFSIndexedFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(1, fs.clone.call_count)
+        self.assertEquals(123, flow.batch_size)
+        self.assertTrue(flow.with_names)
+        self.assertFalse(flow.is_shuffled)
+        np.testing.assert_equal(names, flow.names)
+        self.assertFalse(flow.skip_incomplete)
+
+        # sub_flow with custom args
+        flow = fs.sub_flow(123, names, with_names=False, meta_keys=iter('abcd'),
+                           shuffle=True, skip_incomplete=True)
+        self.assertIsInstance(flow, DataFSIndexedFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(2, fs.clone.call_count)
+        self.assertEquals(123, flow.batch_size)
+        self.assertFalse(flow.with_names)
+        self.assertTrue(flow.is_shuffled)
+        np.testing.assert_equal(list('034589'), flow.names)
+        self.assertEquals(('a', 'b', 'c', 'd'), flow.meta_keys)
+        self.assertTrue(flow.skip_incomplete)
+
+    def test_random_flow(self):
+        fs = _DummyDataFS()
+        fs.clone = Mock(wraps=fs.clone)
+        fs._capacity = DataFSCapacity(DataFSCapacity.ALL)
+
+        # as_random_flow with default args
+        flow = fs.random_flow(123)
+        self.assertIsInstance(flow, DataFSRandomFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(123, flow.batch_size)
+        self.assertTrue(flow.with_names)
+        self.assertIsNone(flow.meta_keys)
+        self.assertFalse(flow.skip_incomplete)
+
+        # as_random_flow with customized args
+        flow = fs.random_flow(123, with_names=False, meta_keys=['a', 'b'],
+                              skip_incomplete=True)
+        self.assertIsInstance(flow, DataFSRandomFlow)
+        self.assertIsNot(fs, flow.fs)
+        self.assertEquals(123, flow.batch_size)
+        self.assertFalse(flow.with_names)
+        self.assertEquals(('a', 'b'), flow.meta_keys)
+        self.assertTrue(flow.skip_incomplete)
+
+        # as_random_flow with capacity check
+        fs._capacity = DataFSCapacity(
+            DataFSCapacity.ALL & ~DataFSCapacity.RANDOM_SAMPLE)
+        with pytest.raises(UnsupportedOperation):
+            _ = fs.random_flow(123)
 
 
 class ExtendedLocalFS(LocalFS):

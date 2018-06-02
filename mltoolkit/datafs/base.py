@@ -233,7 +233,7 @@ class DataFS(AutoInitAndCloseable):
 
         Args:
             batch_size (int): Size of each mini-batch.
-            names (list[str]): The names of files to retrieve.
+            names (list[str] or np.ndarray[str]): The names to retrieve.
             with_names (bool): Whether or not to include the file names
                 in the returned flow? (default :obj:`True`)
             meta_keys (None or Iterable[str]): The keys of the meta data
