@@ -1,5 +1,6 @@
 import numpy as np
 import six
+from numpy.random import RandomState
 
 from tfsnippet.dataflow import DataFlow
 from tfsnippet.utils import AutoInitAndCloseable, minibatch_slices_iterator
@@ -197,7 +198,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
     """
 
     def __init__(self, fs, batch_size, names, with_names=True, meta_keys=None,
-                 shuffle=False, skip_incomplete=False):
+                 shuffle=False, skip_incomplete=False, random_state=None):
         """
         Construct a new :class:`DataFSIndexedFlow`.
 
@@ -215,6 +216,9 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
                 if it has fewer data than ``batch_size``?
                 (default :obj:`False`, the final mini-batch will always
                  be visited even if it has fewer data than ``batch_size``)
+            random_state (RandomState): Optional numpy RandomState for
+                shuffling data before each epoch.  (default :obj:`None`,
+                use the global :class:`RandomState`).
         """
         super(DataFSIndexedFlow, self).__init__(
             fs=fs,
@@ -226,6 +230,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
         self._names = np.asarray(names, dtype=str)
         self._is_shuffled = shuffle
         self._cached_indices = None  # np.ndarray
+        self._random_state = random_state or np.random
 
     @property
     def names(self):
@@ -255,7 +260,7 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
         indices = self._cached_indices
 
         # shuffle indices
-        np.random.shuffle(indices)
+        self._random_state.shuffle(indices)
 
         for s in minibatch_slices_iterator(
                 length=len(self.names),
