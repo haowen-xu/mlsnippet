@@ -4,9 +4,8 @@ import subprocess
 import sys
 import time
 import unittest
-from tempfile import TemporaryDirectory
 
-from mltoolkit.utils import timed_wait_proc, exec_proc
+from mltoolkit.utils import timed_wait_proc, exec_proc, TemporaryDirectory
 
 
 def _strip(text):
