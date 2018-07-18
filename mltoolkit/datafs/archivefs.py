@@ -2,9 +2,9 @@ import os
 import tarfile
 import zipfile
 
+from mltoolkit.utils import ActiveFiles, maybe_close
 from .base import *
 from .errors import UnsupportedOperation, InvalidOpenMode, DataFileNotExist
-from .utils import ActiveFiles, maybe_close
 
 __all__ = ['TarArchiveFS', 'ZipArchiveFS']
 

@@ -3,9 +3,8 @@ import re
 
 import six
 
-from mltoolkit.utils import DocInherit, AutoInitAndCloseable
+from mltoolkit.utils import maybe_close, DocInherit, AutoInitAndCloseable
 from .errors import UnsupportedOperation, DataFileNotExist
-from .utils import maybe_close
 
 __all__ = [
     'DataFSCapacity',

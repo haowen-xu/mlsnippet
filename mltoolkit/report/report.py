@@ -1,8 +1,9 @@
-import codecs
 import os
-import jinja2
 
-from mltoolkit.report.container import Container
+import jinja2
+import six
+
+from .container import Container
 
 __all__ = ['Report']
 
@@ -78,12 +79,18 @@ class Report(object):
             styles=styles, scripts=scripts
         )
 
-    def save(self, path):
+    def save(self, path_or_file):
         """
         Save the rendered HTML as file.
 
         Args:
-            path (str): The path of the HTML file.
+            path_or_file: The file path, or a file-like object to write.
         """
-        with codecs.open(path, 'wb', 'utf-8') as f:
-            f.write(self.to_html())
+        if hasattr(path_or_file, 'write'):
+            s = self.to_html()
+            if isinstance(s, six.text_type):
+                s = s.encode('utf-8')
+            path_or_file.write(s)
+        else:
+            with open(path_or_file, 'wb') as f:
+                self.save(f)
