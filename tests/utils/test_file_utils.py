@@ -6,8 +6,7 @@ import unittest
 import pytest
 from mock import Mock
 
-from mltoolkit.datafs import ActiveFiles, iter_files, maybe_close
-from mltoolkit.utils import makedirs, TemporaryDirectory
+from mltoolkit.utils import *
 
 
 class ActiveFilesTestCase(unittest.TestCase):

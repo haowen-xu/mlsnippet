@@ -1,7 +1,7 @@
-from . import (archivefs, base, errors, localfs, mongofs, utils)
+from . import (archivefs, base, errors, localfs, mongofs)
 
 __all__ = sum(
-    [m.__all__ for m in [archivefs, base, errors, localfs, mongofs, utils]],
+    [m.__all__ for m in [archivefs, base, errors, localfs, mongofs]],
     []
 )
 
@@ -10,7 +10,6 @@ from .base import *
 from .errors import *
 from .localfs import *
 from .mongofs import *
-from .utils import *
 
 try:
     from . import dataflow

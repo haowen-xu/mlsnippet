@@ -1,7 +1,5 @@
 import gc
-import subprocess
 import unittest
-import uuid
 from contextlib import contextmanager
 from io import BytesIO
 
@@ -12,14 +10,15 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 
 from mltoolkit.datafs import *
+from mltoolkit.utils import maybe_close
 from .standard_checks import StandardFSChecks
+from ..helper import temporary_mongodb
 
 
 class MongoFSTestCase(unittest.TestCase, StandardFSChecks):
 
     def get_snapshot(self, fs):
-        conn_str = 'mongodb://root:123456@127.0.0.1:27017/admin'
-        client = MongoClient(conn_str)
+        client = MongoClient(fs.conn_str)
         try:
             ret = {}
             database = client.get_database('admin')
@@ -40,18 +39,7 @@ class MongoFSTestCase(unittest.TestCase, StandardFSChecks):
 
     @contextmanager
     def temporary_fs(self, snapshot=None, **kwargs):
-        daemon_name = uuid.uuid4().hex
-        subprocess.check_call([
-            'docker', 'run', '--rm', '-d',
-            '--name', daemon_name,
-            '-e', 'MONGO_INITDB_ROOT_USERNAME=root',
-            '-e', 'MONGO_INITDB_ROOT_PASSWORD=123456',
-            '-p', '27017:27017',
-            'mongo'
-        ])
-        print('Docker daemon started: {!r}'.format(daemon_name))
-        try:
-            conn_str = 'mongodb://root:123456@127.0.0.1:27017/admin'
+        with temporary_mongodb() as conn_str:
             if snapshot:
                 client = MongoClient(conn_str)
                 try:
@@ -74,21 +62,19 @@ class MongoFSTestCase(unittest.TestCase, StandardFSChecks):
                     client.close()
             with MongoFS(conn_str, 'admin', 'test', **kwargs) as fs:
                 yield fs
-        finally:
-            subprocess.check_call(['docker', 'kill', daemon_name])
 
     def test_standard(self):
         self.run_standard_checks(DataFSCapacity.ALL)
 
     def test_mongofs_props_and_methods(self):
         with self.temporary_fs() as fs:
-            # test auto-init
+            # test auto-init on cloned objects
             self.assertIsInstance(fs.clone().client, MongoClient)
             self.assertIsInstance(fs.clone().db, Database)
             self.assertIsInstance(fs.clone().gridfs, GridFS)
             self.assertIsInstance(fs.clone().gridfs_bucket, GridFSBucket)
             self.assertIsInstance(fs.clone().collection, Collection)
-            gc.collect()
+            gc.collect()  # cleanup cloned objects
 
 
 if __name__ == '__main__':

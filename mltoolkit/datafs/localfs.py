@@ -1,7 +1,6 @@
 import os
 
-from mltoolkit.utils import makedirs
-from .utils import ActiveFiles, iter_files
+from mltoolkit.utils import makedirs, ActiveFiles, iter_files
 from .base import DataFS, DataFSCapacity
 from .errors import InvalidOpenMode, UnsupportedOperation, DataFileNotExist
 

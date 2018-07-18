@@ -6,6 +6,7 @@ import six
 from mock import Mock
 
 from mltoolkit.datafs import *
+from mltoolkit.utils import maybe_close
 
 
 class StandardFSChecks(object):

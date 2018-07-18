@@ -1,19 +1,16 @@
 import six
-from gridfs import GridFS, GridFSBucket
-from pymongo import MongoClient, CursorType
-from pymongo.database import Database
-from pymongo.collection import Collection
+from pymongo import CursorType
 
+from mltoolkit.utils import MongoBinder
 from .base import DataFS, DataFSCapacity
 from .errors import DataFileNotExist, InvalidOpenMode, MetaKeyNotExist
-from .utils import ActiveFiles
 
 __all__ = ['MongoFS']
 
 META_FIELD = 'metadata'
 
 
-class MongoFS(DataFS):
+class MongoFS(DataFS, MongoBinder):
     """
     MongoDB GridFS based :class:`DataFS`.
 
@@ -33,21 +30,10 @@ class MongoFS(DataFS):
             strict (bool): Whether or not this :class:`DataFS` works in
                 strict mode?  (default :obj:`False`)
         """
-        super(MongoFS, self).__init__(
-            capacity=DataFSCapacity.ALL,
-            strict=strict
-        )
-
-        self._conn_str = conn_str
-        self._db_name = db_name
-        self._coll_name = coll_name
-        self._fs_coll_name = '{}.files'.format(coll_name)
-
-        self._client = None  # type: MongoClient
-        self._db = None  # type: Database
-        self._gridfs = None  # type: GridFS
-        self._gridfs_bucket = None  # type: GridFSBucket
-        self._collection = None  # type: Collection
+        DataFS.__init__(
+            self, capacity=DataFSCapacity.ALL, strict=strict)
+        MongoBinder.__init__(
+            self, conn_str=conn_str, db_name=db_name, coll_name=coll_name)
 
         if self.strict:
             def get_meta_value(r, m, k):
@@ -58,7 +44,6 @@ class MongoFS(DataFS):
             get_meta_value = lambda r, m, k: m.get(k)
 
         self._get_meta_value_from_record = get_meta_value
-        self._active_files = ActiveFiles()
 
     def _make_query_project(self, meta_keys=None, _id=1, filename=1):
         ret = {'_id': _id, 'filename': filename}
@@ -80,98 +65,6 @@ class MongoFS(DataFS):
             meta_dict = {}
         return tuple(self._get_meta_value_from_record(record, meta_dict, k)
                      for k in meta_keys)
-
-    @property
-    def conn_str(self):
-        """Get the MongoDB connection string."""
-        return self._conn_str
-
-    @property
-    def db_name(self):
-        """Get the MongoDB database name."""
-        return self._db_name
-
-    @property
-    def coll_name(self):
-        """Get the collection name (prefix) of the GridFS."""
-        return self._coll_name
-
-    @property
-    def client(self):
-        """
-        Get the MongoDB client.  Reading this property will force
-        the internal states of :class:`MongoFS` to be initialized.
-
-        Returns:
-            MongoClient: The MongoDB client.
-        """
-        self.init()
-        return self._client
-
-    @property
-    def db(self):
-        """
-        Get the MongoDB database object.  Reading this property will force
-        the internal states of :class:`MongoFS` to be initialized.
-
-        Returns:
-            Database: The MongoDB database object.
-        """
-        self.init()
-        return self._db
-
-    @property
-    def gridfs(self):
-        """
-        Get the MongoDB GridFS client.  Reading this property will force
-        the internal states of :class:`MongoFS` to be initialized.
-
-        Returns:
-            GridFS: The MongoDB GridFS client.
-        """
-        self.init()
-        return self._gridfs
-
-    @property
-    def gridfs_bucket(self):
-        """
-        Get the MongoDB GridFS bucket.  Reading this property will force
-        the internal states of :class:`MongoFS` to be initialized.
-
-        Returns:
-            GridFSBucket: The MongoDB GridFS bucket.
-        """
-        self.init()
-        return self._gridfs_bucket
-
-    @property
-    def collection(self):
-        """
-        Get the MongoDB collection object.  Reading this property will force
-        the internal states of :class:`MongoFS` to be initialized.
-
-        Returns:
-            Collection: The MongoDB collection object.
-        """
-        self.init()
-        return self._collection
-
-    def _init(self):
-        self._client = MongoClient(self._conn_str)
-        self._db = self._client.get_database(self._db_name)
-        self._collection = self._db[self._coll_name]
-        self._gridfs = GridFS(self._db, self._coll_name)
-        self._gridfs_bucket = GridFSBucket(self._db, self._coll_name)
-
-    def _close(self):
-        self._active_files.close_all()
-        try:
-            if self._client is not None:
-                self._client.close()
-        finally:
-            self._gridfs = None
-            self._db = None
-            self._client = None
 
     def clone(self):
         return MongoFS(self.conn_str, self.db_name, self.coll_name,
