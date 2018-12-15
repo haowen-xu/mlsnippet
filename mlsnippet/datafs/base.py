@@ -176,9 +176,9 @@ class DataFS(AutoInitAndCloseable):
                 epoch of the flow?  Setting this to :obj:`True` will force
                 loading the file list into memory.  (default :obj:`False`)
             skip_incomplete (bool): Whether or not to exclude a mini-batch,
-                if it has fewer data than ``batch_size``?
-                (default :obj:`False`, the final mini-batch will always
-                 be visited even if it has fewer data than ``batch_size``)
+                if it has fewer data than ``batch_size``? (default
+                :obj:`False`, the final mini-batch will always be visited even
+                if it has fewer data than ``batch_size``)
             names_pattern (None or str or regex): The file name pattern.
                 If specified, only if the file name matches this pattern,
                 would the file be included in the constructed data flow.
@@ -241,9 +241,9 @@ class DataFS(AutoInitAndCloseable):
                 epoch of the flow?  Setting this to :obj:`True` will force
                 loading the file list into memory.  (default :obj:`False`)
             skip_incomplete (bool): Whether or not to exclude a mini-batch,
-                if it has fewer data than ``batch_size``?
-                (default :obj:`False`, the final mini-batch will always
-                 be visited even if it has fewer data than ``batch_size``)
+                if it has fewer data than ``batch_size``? (default
+                :obj:`False`, the final mini-batch will always be visited even
+                if it has fewer data than ``batch_size``)
 
         Returns:
             tfsnippet.dataflow.DataFlow: A dataflow, with each mini-batch
@@ -279,9 +279,9 @@ class DataFS(AutoInitAndCloseable):
             meta_keys (None or Iterable[str]): The keys of the meta data
                 to be included in the returned flow. (default :obj:`None`)
             skip_incomplete (bool): Whether or not to exclude a mini-batch,
-                if it has fewer data than ``batch_size``?
-                (default :obj:`False`, the final mini-batch will always
-                 be visited even if it has fewer data than ``batch_size``)
+                if it has fewer data than ``batch_size``? (default
+                :obj:`False`, the final mini-batch will always be visited even
+                if it has fewer data than ``batch_size``)
             batch_count (int or None): The number of mini-batches to obtain
                 in an epoch.  (default :obj:`None`, infinite mini-batches)
 
