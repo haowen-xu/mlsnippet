@@ -1,6 +1,6 @@
 import unittest
 
-from mltoolkit.report.library import *
+from mlsnippet.report.library import *
 
 
 class LibraryTestCase(unittest.TestCase):

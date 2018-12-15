@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=MLToolkit
+set SPHINXPROJ=MLSnippet
 
 if "%1" == "" goto help
 

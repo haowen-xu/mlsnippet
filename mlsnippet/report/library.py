@@ -1,6 +1,6 @@
 import weakref
 
-from mltoolkit.utils import DocInherit
+from mlsnippet.utils import DocInherit
 
 __all__ = ['Library', 'SingletonLibrary', 'JQuery', 'MathJax']
 

@@ -21,8 +21,8 @@ class ActiveFiles(object):
     file object will not be called by this class.
 
     Such a class is majorly designed for keeping track of active file objects
-    opened by a :class:`~mltoolkit.datafs.DataFS`, which are forced to be
-    closed as soon as the :class:`~mltoolkit.datafs.DataFS` is closed.
+    opened by a :class:`~mlsnippet.datafs.DataFS`, which are forced to be
+    closed as soon as the :class:`~mlsnippet.datafs.DataFS` is closed.
     """
 
     def __init__(self):

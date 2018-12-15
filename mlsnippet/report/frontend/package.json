@@ -1,7 +1,7 @@
 {
-  "name": "mltoolkit-report-frontend",
+  "name": "mlsnippet-report-frontend",
   "version": "1.0.0",
-  "description": "MLToolkit Report FrontEnd",
+  "description": "MLSnippet Report FrontEnd",
   "main": "index.js",
   "author": "Haowen Xu",
   "license": "MIT",

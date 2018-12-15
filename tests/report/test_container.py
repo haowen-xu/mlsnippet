@@ -2,7 +2,7 @@ import unittest
 
 from mock import Mock
 
-from mltoolkit.report import *
+from mlsnippet.report import *
 
 
 class ContainerTestCase(unittest.TestCase):

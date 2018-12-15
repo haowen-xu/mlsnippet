@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from PIL import Image as PILImage
 from mock import Mock
 
-from mltoolkit.report import *
+from mlsnippet.report import *
 
 
 class ElementTestCase(unittest.TestCase):
@@ -25,14 +25,14 @@ class ElementTestCase(unittest.TestCase):
 
         css_path = os.path.join(
             os.path.split(os.path.abspath(__file__))[0],
-            '../../mltoolkit/report/templates/ipython.css'
+            '../../mlsnippet/report/templates/ipython.css'
         )
         with codecs.open(css_path, 'rb', 'utf-8') as f:
             css = f.read()
 
         self.assertEqual(
             s,
-            '<div class="mltoolkit-element"><style>{css}</style>'
+            '<div class="mlsnippet-element"><style>{css}</style>'
             'xyz</div>'.format(css=css)
         )
 

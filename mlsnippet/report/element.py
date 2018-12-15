@@ -14,7 +14,7 @@ try:
 except ImportError:  # pragma: no cover
     PILImage = None
 
-from mltoolkit.utils import DocInherit
+from mlsnippet.utils import DocInherit
 from .context import ToHtmlContext
 from .library import Library, MathJax
 from .utils import escape
@@ -46,7 +46,7 @@ class Element(object):
         with codecs.open(css_path, 'rb', 'utf-8') as f:
             css = f.read()
         return (
-            '<div class="mltoolkit-element">'
+            '<div class="mlsnippet-element">'
             '<style>' + css + '</style>' +
             self.to_html(ToHtmlContext(is_ipython=True)) +
             '</div>'

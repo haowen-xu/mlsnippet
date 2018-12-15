@@ -7,8 +7,8 @@ from contextlib import contextmanager
 import pytest
 import six
 
-from mltoolkit.datafs import *
-from mltoolkit.utils import TemporaryDirectory, makedirs
+from mlsnippet.datafs import *
+from mlsnippet.utils import TemporaryDirectory, makedirs
 from .standard_checks import StandardFSChecks
 
 

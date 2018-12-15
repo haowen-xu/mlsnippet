@@ -1,7 +1,7 @@
-mltoolkit\.datafs
+mlsnippet\.datafs
 =================
 
-.. automodule:: mltoolkit.datafs
+.. automodule:: mlsnippet.datafs
     :members:
     :undoc-members:
     :show-inheritance:

@@ -3,7 +3,7 @@ import re
 
 import six
 
-from mltoolkit.utils import maybe_close, DocInherit, AutoInitAndCloseable
+from mlsnippet.utils import maybe_close, DocInherit, AutoInitAndCloseable
 from .errors import UnsupportedOperation, DataFileNotExist
 
 __all__ = [
@@ -110,11 +110,11 @@ class DataFS(AutoInitAndCloseable):
     A :class:`DataFS` provides access to a machine learning dataset stored
     in a file system like backend.  For example, large image datasets are
     usually stored as raw image files, gathered in a directory.  Such true
-    file system can be accessed by :class:`~mltoolkit.datafs.LocalFS`.
+    file system can be accessed by :class:`~mlsnippet.datafs.LocalFS`.
 
     Apart from the true file system, some may instead store these images in a
     database provided virtual file system, for example, the GridFS of MongoDB,
-    which can be accessed via :class:`~mltoolkit.datafs.MongoFS`.
+    which can be accessed via :class:`~mlsnippet.datafs.MongoFS`.
     """
 
     _buffer_size = 65536
@@ -162,7 +162,7 @@ class DataFS(AutoInitAndCloseable):
         Construct a :class:`~tfsnippet.dataflow.DataFlow`, which iterates
         through the files once and only once in an epoch.
 
-        The returned :class:`~mltoolkit.datafs.DataFSFlow` will hold a copy
+        The returned :class:`~mlsnippet.datafs.DataFSFlow` will hold a copy
         of this instance (obtained by :meth:`clone()`) instead of holding
         this instance itself.
 
@@ -226,7 +226,7 @@ class DataFS(AutoInitAndCloseable):
         Construct a :class:`~tfsnippet.dataflow.DataFlow`, which iterates
         through the files according to selected `names`.
 
-        The returned :class:`~mltoolkit.datafs.DataFSFlow` will hold a copy
+        The returned :class:`~mlsnippet.datafs.DataFSFlow` will hold a copy
         of this instance (obtained by :meth:`clone()`) instead of holding
         this instance itself.
 
@@ -268,7 +268,7 @@ class DataFS(AutoInitAndCloseable):
         or pre-configured number of mini-batches in an epoch, randomly
         sampled from the whole :class:`DataFS`.
 
-        The returned :class:`~mltoolkit.datafs.DataFSRandomFlow` will hold
+        The returned :class:`~mlsnippet.datafs.DataFSRandomFlow` will hold
         a copy of this instance (obtained by :meth:`clone()`) instead of
         holding this instance itself.
 

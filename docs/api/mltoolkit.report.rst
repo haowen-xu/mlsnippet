@@ -1,7 +1,7 @@
-mltoolkit\.report
+mlsnippet\.report
 =================
 
-.. automodule:: mltoolkit.report
+.. automodule:: mlsnippet.report
     :members:
     :undoc-members:
     :show-inheritance:

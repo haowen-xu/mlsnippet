@@ -1,6 +1,6 @@
 import unittest
 
-from mltoolkit.utils import DocInherit
+from mlsnippet.utils import DocInherit
 
 
 class DocInheritTestCase(unittest.TestCase):

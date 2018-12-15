@@ -5,7 +5,7 @@ import sys
 import time
 import unittest
 
-from mltoolkit.utils import timed_wait_proc, exec_proc, TemporaryDirectory
+from mlsnippet.utils import timed_wait_proc, exec_proc, TemporaryDirectory
 
 
 def _strip(text):

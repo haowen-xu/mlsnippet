@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-from mltoolkit.utils import *
+from mlsnippet.utils import *
 from ..helper import temporary_mongodb
 
 

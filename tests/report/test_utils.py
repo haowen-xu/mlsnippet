@@ -1,6 +1,6 @@
 import unittest
 
-from mltoolkit.report import escape, camel_to_underscore
+from mlsnippet.report import escape, camel_to_underscore
 
 
 class EscapeTestCase(unittest.TestCase):

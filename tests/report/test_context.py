@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from mltoolkit.report import *
+from mlsnippet.report import *
 
 
 class UniqueNamesTestCase(unittest.TestCase):
