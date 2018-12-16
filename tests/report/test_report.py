@@ -5,8 +5,8 @@ import unittest
 
 from mock import Mock
 
-from mltoolkit.report import *
-from mltoolkit.utils import TemporaryDirectory
+from mlsnippet.report import *
+from mlsnippet.utils import TemporaryDirectory
 
 
 class ReportTestCase(unittest.TestCase):
@@ -26,7 +26,7 @@ class ReportTestCase(unittest.TestCase):
     def test_to_html(self):
         template_dir = os.path.join(
             os.path.split(os.path.abspath(__file__))[0],
-            '../../mltoolkit/report/templates'
+            '../../mlsnippet/report/templates'
         )
         main_template_path = os.path.join(template_dir, 'main.html')
         with codecs.open(main_template_path, 'rb', 'utf-8') as f:

@@ -1,8 +1,8 @@
 """
-ML Toolkit
-----------
+MLSnippet
+---------
 
-ML Toolkit is a set of toolkit for daily machine learning experiments.
+MLSnippet is a set of toolkit for daily machine learning experiments.
 """
 import ast
 import codecs
@@ -25,7 +25,7 @@ else:
             return f.read()
 
 version = str(ast.literal_eval(_version_re.search(
-    read_file(os.path.join(_source_dir, 'mltoolkit/__init__.py'))).group(1)))
+    read_file(os.path.join(_source_dir, 'mlsnippet/__init__.py'))).group(1)))
 
 requirements_list = list(filter(
     lambda v: v and not v.startswith('#'),
@@ -37,17 +37,17 @@ install_requires = [s for s in requirements_list if not s.startswith('git+')]
 
 
 setup(
-    name='MLToolkit',
+    name='MLSnippet',
     version=version,
-    url='https://github.com/haowen-xu/mltoolkit/',
+    url='https://github.com/haowen-xu/mlsnippet/',
     license='MIT',
     author='Haowen Xu',
     author_email='haowen.xu@outlook.com',
     description='A set of toolkit for daily machine learning experiments.',
     long_description=__doc__,
-    packages=find_packages('.', include=['mltoolkit', 'mltoolkit.*']),
+    packages=find_packages('.', include=['mlsnippet', 'mlsnippet.*']),
     package_data={
-        'mltoolkit.report': ['templates/*']
+        'mlsnippet.report': ['templates/*']
     },
     include_package_data=True,
     zip_safe=False,

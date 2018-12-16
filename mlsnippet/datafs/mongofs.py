@@ -1,7 +1,7 @@
 import six
 from pymongo import CursorType
 
-from mltoolkit.utils import MongoBinder
+from mlsnippet.utils import MongoBinder
 from .base import DataFS, DataFSCapacity
 from .errors import DataFileNotExist, InvalidOpenMode, MetaKeyNotExist
 

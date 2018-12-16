@@ -167,9 +167,9 @@ class DataFSForwardFlow(_BaseDataFSFlow):
             meta_keys (None or Iterable[str]): The keys of the meta data
                 to be included in mini-batches. (default :obj:`None`)
             skip_incomplete (bool): Whether or not to exclude a mini-batch,
-                if it has fewer data than ``batch_size``?
-                (default :obj:`False`, the final mini-batch will always
-                 be visited even if it has fewer data than ``batch_size``)
+                if it has fewer data than ``batch_size``? (default
+                :obj:`False`, the final mini-batch will always be visited even
+                if it has fewer data than ``batch_size``)
         """
         super(DataFSForwardFlow, self).__init__(
             fs=fs,
@@ -213,9 +213,9 @@ class DataFSIndexedFlow(_BaseDataFSFlow):
             shuffle (bool): Whether or not to shuffle the name indices
                 before each epoch?  (default :obj:`False`)
             skip_incomplete (bool): Whether or not to exclude a mini-batch,
-                if it has fewer data than ``batch_size``?
-                (default :obj:`False`, the final mini-batch will always
-                 be visited even if it has fewer data than ``batch_size``)
+                if it has fewer data than ``batch_size``? (default
+                :obj:`False`, the final mini-batch will always be visited even
+                if it has fewer data than ``batch_size``)
             random_state (RandomState): Optional numpy RandomState for
                 shuffling data before each epoch.  (default :obj:`None`,
                 use the global :class:`RandomState`).
@@ -319,9 +319,9 @@ class DataFSRandomFlow(_BaseDataFSFlow):
             batch_count (int or None): The number of mini-batches to obtain
                 in an epoch.  (default :obj:`None`, infinite mini-batches)
             skip_incomplete (bool): Whether or not to exclude a mini-batch,
-                if it has fewer data than ``batch_size``?
-                (default :obj:`False`, the final mini-batch will always
-                 be visited even if it has fewer data than ``batch_size``)
+                if it has fewer data than ``batch_size``? (default
+                :obj:`False`, the final mini-batch will always be visited even
+                if it has fewer data than ``batch_size``)
         """
         super(DataFSRandomFlow, self).__init__(
             fs, batch_size=batch_size, with_names=with_names,

@@ -9,8 +9,8 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-from mltoolkit.datafs import *
-from mltoolkit.utils import maybe_close
+from mlsnippet.datafs import *
+from mlsnippet.utils import maybe_close
 from .standard_checks import StandardFSChecks
 from ..helper import temporary_mongodb
 

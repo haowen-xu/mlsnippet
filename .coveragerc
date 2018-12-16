@@ -1,6 +1,6 @@
 [run]
 branch = True
-source = mltoolkit
+source = mlsnippet
 
 [report]
 exclude_lines =
@@ -14,7 +14,7 @@ exclude_lines =
 ignore_errors = True
 omit =
     tests/*
-    mltoolkit/report/frontend/*
-    mltoolkit/report/demo.py
-    mltoolkit/utils/imported.py
+    mlsnippet/report/frontend/*
+    mlsnippet/report/demo.py
+    mlsnippet/utils/imported.py
     setup.py

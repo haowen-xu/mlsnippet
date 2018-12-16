@@ -6,7 +6,7 @@ import unittest
 import pytest
 from mock import Mock
 
-from mltoolkit.utils import *
+from mlsnippet.utils import *
 
 
 class ActiveFilesTestCase(unittest.TestCase):

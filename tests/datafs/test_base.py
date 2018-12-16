@@ -9,9 +9,9 @@ import six
 import pytest
 from mock import Mock
 
-from mltoolkit.datafs import *
-from mltoolkit.datafs import UnsupportedOperation, DataFileNotExist
-from mltoolkit.utils import TemporaryDirectory, makedirs, iter_files
+from mlsnippet.datafs import *
+from mlsnippet.datafs import UnsupportedOperation, DataFileNotExist
+from mlsnippet.utils import TemporaryDirectory, makedirs, iter_files
 from .standard_checks import StandardFSChecks, LocalFS
 from .test_dataflow import _DummyDataFS
 

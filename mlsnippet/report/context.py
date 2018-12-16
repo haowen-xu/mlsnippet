@@ -68,9 +68,9 @@ class UniqueNames(object):
 
 class ToHtmlContext(object):
     """
-    The context for :meth:`mltoolkit.report.Element.to_html`.
+    The context for :meth:`mlsnippet.report.Element.to_html`.
 
-    This class carries the context for :meth:`mltoolkit.report.Element.to_html`.
+    This class carries the context for :meth:`mlsnippet.report.Element.to_html`.
     It collects the elements along the call-stack (i.e., the elements along
     the path of calling :meth:`Element.to_html`), and provide various utilities
     for producing the HTML document.
@@ -96,7 +96,7 @@ class ToHtmlContext(object):
 
     def iter_elements(self):
         """
-        Get an iterator of the :class:`~mltoolkit.report.Element` along the
+        Get an iterator of the :class:`~mlsnippet.report.Element` along the
         call-stack.
         """
         return iter(self._elements)
@@ -129,12 +129,12 @@ class ToHtmlContext(object):
     @contextlib.contextmanager
     def push(self, element):
         """
-        Push an :class:`mltoolkit.report.Element` onto the call-stack,
+        Push an :class:`mlsnippet.report.Element` onto the call-stack,
         and open a context.
 
         Args:
-            element (mltoolkit.report.Element): The element to be pushed.
-                If it is a :class:`mltoolkit.report.Section`, then the
+            element (mlsnippet.report.Element): The element to be pushed.
+                If it is a :class:`mlsnippet.report.Section`, then the
                 :attr:`section_level` counter will be increased by one
                 within the opened context.
 
@@ -142,8 +142,8 @@ class ToHtmlContext(object):
             A context where the `element` is on the call-stack.
 
         Raises:
-            TypeError: If `element` is not :class:`~mltoolkit.report.Element`.
-            RuntimeError: If a :class:`~mltoolkit.report.Section` is pushed,
+            TypeError: If `element` is not :class:`~mlsnippet.report.Element`.
+            RuntimeError: If a :class:`~mlsnippet.report.Section` is pushed,
                 but the current :attr:`section_level` is already ``>=5``.
         """
         from .element import Element
@@ -168,12 +168,12 @@ class ToHtmlContext(object):
         Get a unique id for `element` within this context.
 
         The unique id will be generated w.r.t. the class name of `element`.
-        If `element` is a :class:`~mltoolkit.report.NamedElement`, then
+        If `element` is a :class:`~mlsnippet.report.NamedElement`, then
         its `name` will be considered instead of its class name, provided
         `name` is not :obj:`None`.
 
         Args:
-            element (mltoolkit.report.Element): The element instance.
+            element (mlsnippet.report.Element): The element instance.
             suffix (str or None): If not :obj:`None`, it will be appended
                 to the class name or `name` of the `element`, when obtaining
                 the unique id.  (default :obj:`None`)

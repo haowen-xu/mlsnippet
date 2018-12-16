@@ -7,7 +7,7 @@ import pytest
 import six
 from mock import Mock
 
-from mltoolkit.datafs import *
+from mlsnippet.datafs import *
 
 
 def _to_cont(i):

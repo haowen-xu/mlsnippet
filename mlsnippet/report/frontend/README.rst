@@ -1,5 +1,5 @@
-ML Toolkit Report Template
-==========================
+MLSnippet Report Template
+=========================
 
 Dependencies
 ------------

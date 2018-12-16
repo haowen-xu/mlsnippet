@@ -1,6 +1,6 @@
 import unittest
 
-from mltoolkit.datafs import DataFileNotExist, MetaKeyNotExist, InvalidOpenMode
+from mlsnippet.datafs import DataFileNotExist, MetaKeyNotExist, InvalidOpenMode
 
 
 class ExceptionsTestCase(unittest.TestCase):
